@@ -1,14 +1,10 @@
-# Project
+# BBS Reference Implementation
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+TypeScript reference implementation for the [BBS signature scheme](https://github.com/decentralized-identity/bbs-signature). The goal is to help understand and verify the specification, it is not meant as a production-ready implementation. 
 
-As the maintainer of this project, please make a few updates:
+This project aims to keep up to date with the [latest specification](https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html), but may be behind since the specification changes often; the current implementation matches the *Sept 26, 2002* version of the specification.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+Given the rapid evolution of the BBS scheme, there might be inconsistencies between the specification and the code; please open issues or file PRs if you find any!
 
 ## Contributing
 
