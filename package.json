@@ -6,7 +6,6 @@
   "scripts": {
     "build": "tsc",
     "bbs": "ts-node --files src/index.ts",
-    "fixture": "ts-node --files src/fixturetest.ts",
     "test": "jest --silent"
   },
   "author": "Christian Paquin",
