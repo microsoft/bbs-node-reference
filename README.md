@@ -1,14 +1,48 @@
-# Project
+# BBS Reference Implementation
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+*WORK IN PROGRESS*
 
-As the maintainer of this project, please make a few updates:
+TypeScript reference implementation for the [BBS signature scheme](https://github.com/decentralized-identity/bbs-signature). The goal is to help understand and verify the specification. This is NOT a production-ready implementation; testing is minimal and no effort is made to optimize and protect against specialized attacks (e.g., side-channel resistance). 
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+This project aims to keep up to date with the [latest specification](https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html), but may be behind since the specification changes often; the current implementation matches the *Sept 26, 2002* version of the specification. 
+
+Given the rapid evolution of the BBS scheme, there might be inconsistencies between the specification and the code; please open issues or file PRs if you find any!
+
+## Known issues
+
+This library is a work in progress. Here are some known issues
+* Only the BLS12-381-SHA-256 ciphersuite is currently available
+* `hash_to_scalar` needs to be reimplemented to catch up with the spec
+* The library isn't currently compatible with the published test vectors
+
+## Setup
+
+Make sure [node.js](https://nodejs.org/) and [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) are installed on your system; the latest Long-Term Support (LTS) version is recommended for both.
+
+1. Get the source, for example using `git`
+```
+git clone -b main https://github.com/microsoft/bbs-node-reference.git
+cd bbs-node-reference
+```
+
+2. Build the `npm` package
+```
+npm install
+npm run build
+```
+
+3. Optionally, run the unit tests
+
+```
+npm test
+```
+
+4. Optionally, run the test program
+
+```
+npm run bbs
+```
+
 
 ## Contributing
 
