@@ -56,26 +56,8 @@ export const BLS12_381_SHA256_Ciphersuite: Ciphersuite = {
     },
     // implements https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#section-8.8.1
     hash_to_curve_g1: async (input: Uint8Array) => {
-        // the noble library only implements hash to G2, so we need to implement hash to G1 here
-
-        const u = await utils.hashToField(input, 2, 
-            // params from https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#section-8.8.1
-            {
-                DST: 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_', // TODO: change to this.hash_to_curve_g1_dst 
-                p: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
-                m: 1,
-                k: 128,
-                expand: true, // use expand_message_xmd
-            })
-        //console.log(`hash_to_curve(msg}) u0=${new Fp2(u[0])} u1=${new Fp2(u[1])}`);
-        // TODO: https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-14.html#section-6.6.3-7
-        // do this, from the spec? Note that iso_map is a group homomorphism, meaning that point addition commutes with iso_map. Thus, when using this mapping in the hash_to_curve construction of Section 3, one can effect a small optimization by first mapping u0 and u1 to E', adding the resulting points on E', and then applying iso_map to the sum. This gives the same result while requiring only one evaluation of iso_map.
-        const Q0 = PointG1.BASE;// new PointG1(...isogenyMapG1(map_to_curve_simple_swu(u[0])));
-        const Q1 = PointG1.BASE;// new PointG1(...isogenyMapG1(map_to_curve_simple_swu(u[1])));
-        const R = Q0.add(Q1);
-        const P = R.clearCofactor();
-        //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
-        return P;
+        // the noble library only implements hash to G2, so we need to implement hash to G1 here (FIXME)
+        throw "not implemented";
     },
     hash_to_curve_g1_dst: Buffer.from("BBS_BLS12381G1_XOF:SHAKE-256_SSWU_RO",'utf-8'),
     hash_to_field: (input: Uint8Array) => {return Fr.ONE},

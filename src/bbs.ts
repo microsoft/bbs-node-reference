@@ -263,14 +263,16 @@ export class BBS {
   CreateGenerators(dst: Uint8Array, message_generator_seed: Uint8Array, length: number): Generators {
       // NOTE: we don't implement CreateGenerators because we need a hash to G1 not supported by the bls library (FIXME)
       const test_vectors: bls.PointG1[] = [
-        this.cs.octets_to_point_g1(utils.hexToBytes("95c10133d125fd556a14b96b2f0607b757d41fbce15b61fc64ab60c4c9e3b268469abc41fb7713dc4034d3fee18eed6f")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("a410a9c0fa4f48e14dc9f3cc11164625f98f5cc9c0e6f7690008ab6c83a073a63811caf1598d4094593bd1233bdf228e")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("861b44ba4897f9b10b926c22c60e09c7234c76b75bfb15bcb786ee7c26430dbfe6576ffbfd2cb88ba960847b134c17f2")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("a7f1b70c9bf41f7b686c19198fa29a2b55088e719ae1b5219046121c1d70e1d7f2eccc5ca0e6f1fb8073fac69752b455")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("b06b73e3cfa6003d39fdaad503eaae19d9f790e5ce706f2249a96c582f2ea74fc75f0f0d3dddbcbec8192b464eae6e3f")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("a287f77f414644ce6d1ce101486999af0a0dde5f5017314d27922350888a48d7355ac0c2d20215b12d0f4e743a4fcce8")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("aa3ad2f578cd54daceccf6e065ae0af32d7b2173a67b2394d08203c64277dfe3d1778782a7834364a22ad1dc6002d773")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("ab19bd40525e36bb4e132378e0596f21b32d7455de969862f3a48864eb9e2dd4c1e8bc903ceea686861b1dc0280b0b15")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("90248350d94fd550b472a54269e28b680757d8cbbe6bb2cb000742c07573138276884c2872a8285f4ecf10df6029be15")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("8fb7d5c43273a142b6fc445b76a8cdfc0f96c5fdac7cdd73314ac4f7ec4990a0a6f28e4ad97fb0a3a22efb07b386e3ff")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("8241e3e861aaac2a54a8d7093301143d7d3e9911c384a2331fcc232a3e64b4882498ce4d9da8904ffcbe5d6eadafc82b")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("99bb19d202a4019c14a36933264ae634659994076bf02a94135e1026ea309c7d3fd6da60c7929d30b656aeaba7c0dcec")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("81779fa5268e75a980799c0a01677a763e14ba82cbf0a66c653edc174057698636507ac58e73522a59585558dca80b42")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("98a3f9af71d391337bc6ae5d26980241b6317d5d71570829ce03d63c17e0d2164e1ad793645e1762bfcc049a17f5994b")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("aca6a84770bb1f515591b4b95d69777856ddc52d5439325839e31ce5b6237618a9bc01a04b0057d33eab14341504c7e9")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("b96e206d6cf32b51d2f4d543972d488a4c4cbc5d994f6ebb0bdffbc5459dcb9a8e5ab045c5949dc7eb33b0545b62aae3")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("8edf840b56ecf8d7c5a9c4a0aaf8a5525f3480df735743298dd2f4ae1cbb56f56ed6a04ef6fa7c92cd68d9101c7b8c8f")),
+        this.cs.octets_to_point_g1(utils.hexToBytes("86d4ae04738dc082eb37e753bc8ec35a8d982e463559214d0f777599f71aa1f95780b3dccbdcae45e146e5c7623dfe7d")),
       ];
 
       const generators: bls.PointG1[] = [];
@@ -279,8 +281,8 @@ export class BBS {
       }
 
       return {
-        Q1: this.cs.octets_to_point_g1(utils.hexToBytes("91230b37837e5df457ff32eb129fbc5fd31de7af88cb4263b545f998a23294b073d92458be7639b6c867f4e340c209d5")),
-        Q2: this.cs.octets_to_point_g1(utils.hexToBytes("9594346850ba101da9f94b9856bba3843c959d22e8d6d58c3ad8b25c9a2209945ca73cdf9ce6fd51478ecc1377bdad05")),
+        Q1: this.cs.octets_to_point_g1(utils.hexToBytes("b57ec5e001c28d4063e0b6f5f0a6eee357b51b64d789a21cf18fd11e73e73577910182d421b5a61812f5d1ca751fa3f0")),
+        Q2: this.cs.octets_to_point_g1(utils.hexToBytes("909573cbb9da401b89d2778e8a405fdc7d504b03f0158c31ba64cdb9b648cc35492b18e56088b44c8b4dc6310afb5e49")),
         H: generators
       };
   }
@@ -295,8 +297,8 @@ export class BBS {
   }
 
   // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-hash-to-scalar
-  // FIXME: re-implement according to updated spec
-  hash_to_scalar(msg_octets: HashInput[], count: number, dst: Uint8Array = Buffer.from(this.cs.Ciphersuite_ID + "H2S_", "utf8")): bigint[] {
+  // Note: encodes the msg_octets inputs per the spec's encode_for_hash function (in ##name-encodeforhash)
+    hash_to_scalar(msg_octets: HashInput[], count: number, dst: Uint8Array = Buffer.from(this.cs.Ciphersuite_ID + "H2S_", "utf8")): bigint[] {
       const scalars: bigint[] = [];
       const h = this.cs.createXOF();
       msg_octets.forEach(v => h.update(v));
@@ -306,6 +308,7 @@ export class BBS {
             scalars[i] = new bls.Fr(utils.os2ip(h.read(64))).value;
           }
       }
+
     return scalars;
   }
   

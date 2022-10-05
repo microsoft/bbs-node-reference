@@ -1,5 +1,4 @@
-// utils from bls project (TODO: better import)
-// NOTE: copied from noble-bls12-381's index.ts (TODO: import or re-impl)
+// NOTE: some functions copied from noble-bls12-381's index.ts (TODO: cleaner import or re-impl)
 
 import { PointG1, PointG2 } from "@noble/bls12-381";
 
@@ -16,7 +15,7 @@ export function os2ip(bytes: Uint8Array): bigint {
 // Integer to Octet Stream
 export function i2osp(value: number | bigint, length: number): Uint8Array {
   // FIXME: same as toRawBytes?
-  if (value < 0  || value >= 256n**BigInt(length) /*1 << (8 * length) FIXME: throws with length == 4 */) { // TODO: FIXME: make constant for our constant sizes
+  if (value < 0  || value >= 256n**BigInt(length) /*1 << (8 * length) FIXME: throws with length == 4! */) { // TODO: FIXME: make constant for our constant sizes
     throw new Error(`bad I2OSP call: value=${value} length=${length}`);
   }
   const res = Array.from({ length }).fill(0) as number[];
