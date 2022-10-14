@@ -1,8 +1,8 @@
-import { Fr, PointG1, PointG2 } from '@noble/bls12-381';
+import { PointG1, PointG2 } from '@noble/bls12-381';
 import { Keccak, shake256 } from '@noble/hashes/sha3';
 import { HashXOF } from '@noble/hashes/utils';
 import { BLS12_381_SHA256_Ciphersuite, Ciphersuite } from './ciphersuite';
-import { i2osp } from './utils';
+import { concatBytes, i2osp } from './utils';
 
 export type HashInput = PointG1 | PointG2 | string | number | bigint | Uint8Array;
 
@@ -24,6 +24,15 @@ export function HashInputToBytes(data: HashInput, cs: Ciphersuite = BLS12_381_SH
   } else {
     throw "invalid input";
   }
+}
+
+// https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-encodeforhash
+export function encode_for_hash(input: HashInput[]): Uint8Array {
+  let octets_to_hash = new Uint8Array();
+  input.forEach(v => {
+    octets_to_hash = concatBytes(octets_to_hash, HashInputToBytes(v));
+  });
+  return octets_to_hash;
 }
 
 export class Hash {

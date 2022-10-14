@@ -23,7 +23,8 @@ export interface Ciphersuite {
     message_generator_seed: Uint8Array,
     blind_value_generator_seed: Uint8Array,
     signature_dst_generator_seed: Uint8Array,
-    xof_no_of_bytes: number,
+    seed_len: number,  // ceil((ceil(log2(r)) + k)/8)
+    expand_len: number // ceil((ceil(log2(r)) + k)/8)
 }
 
   
@@ -32,7 +33,7 @@ export const BLS12_381_SHA256_Ciphersuite: Ciphersuite = {
     octet_scalar_length: 32,
     octet_point_length: 48,
     hash_to_curve_suite: "BLS12381G1_XMD:SHA-256_SSWU_RO_",
-    P1: PointG1.fromHex(hexToBytes("ad98180923a716ac626a3f7e7ffd3faa71820074bb7ae221fd01c406a6a5636540ef3a3e18b21619a3bdff69e81d5da7")),
+    P1: PointG1.fromHex(hexToBytes("8533b3fbea84e8bd9ccee177e3c56fbe1d2e33b798e491228f6ed65bb4d1e0ada07bcc4489d8751f8ba7a1b69b6eecd7")),
     generator_seed: Buffer.from("BBS_BLS12381G1_XMD:SHA-256_SSWU_RO_MESSAGE_GENERATOR_SEED",'utf-8'),
     createHash: () => new Hash(),
     createXOF: () => new XOF(),
@@ -65,7 +66,8 @@ export const BLS12_381_SHA256_Ciphersuite: Ciphersuite = {
     message_generator_seed: Buffer.from("DEFAULT SEED",'utf-8'),
     blind_value_generator_seed: Buffer.from("DEFAULT SEED",'utf-8'),
     signature_dst_generator_seed: Buffer.from("DEFAULT SEED",'utf-8'),
-    xof_no_of_bytes: 64
+    seed_len: 48,
+    expand_len: 48
 }
 
 // Note: we don't currently support the BLS12-381-SHAKE-256 ciphersuite because the underlying BLS library doesn't support SHAKE

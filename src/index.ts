@@ -13,9 +13,7 @@ try {
     // create the generators
     const length = 5;
     let msg = Array(length).fill(null).map(v => crypto.randomBytes(20));
-    const message_generator_seed = Buffer.from("MESSAGE GENERATOR SEED", "utf-8");
-    const dst = Buffer.from("TEST", "utf-8");
-    const generators = bbs.CreateGenerators(dst, message_generator_seed, length);
+    const generators = bbs.CreateGenerators(length);
 
     // create the signature
     const header = Buffer.from("HEADER", "utf-8");

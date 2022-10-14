@@ -3,7 +3,7 @@ import { extract as hkdfExtract, expand as hkdfExpand } from '@noble/hashes/hkdf
 import * as utils from './utils';
 import * as bls from '@noble/bls12-381';
 import { Ciphersuite, BLS12_381_SHA256_Ciphersuite } from './ciphersuite';
-import { HashInput } from './hash';
+import { encode_for_hash, HashInput } from './hash';
 import * as crypto from 'crypto';
 
 export interface BBSSignature {
@@ -260,7 +260,7 @@ export class BBS {
   }
 
   // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-creategenerators
-  CreateGenerators(dst: Uint8Array, message_generator_seed: Uint8Array, length: number): Generators {
+  CreateGenerators(length: number): Generators {
       // NOTE: we don't implement CreateGenerators because we need a hash to G1 not supported by the bls library (FIXME)
       const test_vectors: bls.PointG1[] = [
         this.cs.octets_to_point_g1(utils.hexToBytes("90248350d94fd550b472a54269e28b680757d8cbbe6bb2cb000742c07573138276884c2872a8285f4ecf10df6029be15")),
@@ -297,21 +297,27 @@ export class BBS {
   }
 
   // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-hash-to-scalar
-  // Note: encodes the msg_octets inputs per the spec's encode_for_hash function (in ##name-encodeforhash)
-    hash_to_scalar(msg_octets: HashInput[], count: number, dst: Uint8Array = Buffer.from(this.cs.Ciphersuite_ID + "H2S_", "utf8")): bigint[] {
-      const scalars: bigint[] = [];
-      const h = this.cs.createXOF();
-      msg_octets.forEach(v => h.update(v));
-      for (let i = 0; i < count; i++) {
-          scalars[i] = 0n;
-          while (scalars[i] === 0n) {
-            scalars[i] = new bls.Fr(utils.os2ip(h.read(64))).value;
-          }
+  hash_to_scalar(input: HashInput[], count: number, dst: Uint8Array = Buffer.from(this.cs.Ciphersuite_ID + "H2S_", "utf8")): bigint[] {
+    const scalars: bigint[] = [];
+    const len_in_bytes = count * this.cs.expand_len;
+    let t = 0;
+    const msg_octets = encode_for_hash(input);
+    let cont = true;
+    while (cont) {
+      const msg_prime =  utils.concatBytes(msg_octets, utils.i2osp(t,1), utils.i2osp(count, 4));
+      const uniform_bytes = hkdfExpand(sha256, msg_prime, dst, len_in_bytes);
+      for (let i=0; i<count; i++) {
+        scalars.push(modR(utils.os2ip(uniform_bytes.slice(i*this.cs.expand_len,(i+1)*this.cs.expand_len))));
       }
-
+      if (scalars.some(v => v == 0n)) {
+        t++;
+      } else {
+        cont = false;
+      }
+    }
     return scalars;
   }
-  
+
   // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-octetstosignature
   octets_to_signature(signature_octets: Uint8Array): BBSSignature {
     if (signature_octets.length !== this.cs.octet_point_length + 2 * this.cs.octet_scalar_length) {
