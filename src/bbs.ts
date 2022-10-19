@@ -113,9 +113,9 @@ export class BBS {
     }
        
     // check that e(A, W + P2 * e) * e(B, -P2) == Identity_GT
-    const lh = bls.pairing(sig.A, W.add(bls.PointG2.BASE.multiply(sig.e)));
-    const rh = bls.pairing(B, bls.PointG2.BASE.negate());
-    const pairing = lh.multiply(rh);
+    const lh = bls.pairing(sig.A, W.add(bls.PointG2.BASE.multiply(sig.e)), false);
+    const rh = bls.pairing(B, bls.PointG2.BASE.negate(), false);
+    const pairing = lh.multiply(rh).finalExponentiate();
     if (!pairing.equals(bls.Fp12.ONE)) {
       throw "Invalid signature (pairing)";
     }
@@ -251,9 +251,9 @@ export class BBS {
         throw "Invalid proof (A')";
       }
 
-      const lh = bls.pairing(proof_value.APrime, W);
-      const rh = bls.pairing(proof_value.ABar, bls.PointG2.BASE.negate());
-      const pairing = lh.multiply(rh);
+      const lh = bls.pairing(proof_value.APrime, W, false);
+      const rh = bls.pairing(proof_value.ABar, bls.PointG2.BASE.negate(), false);
+      const pairing = lh.multiply(rh).finalExponentiate();
       if (!pairing.equals(bls.Fp12.ONE)) {
         throw "Invalid proof (pairing)"
       }
