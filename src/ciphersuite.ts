@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import * as bls from '@noble/bls12-381';
 import * as crypto from 'crypto';
 import { Hash, XOF } from './hash';

@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import {BBS} from '../src/bbs';
 import { bytesToHex, hexToBytes } from '../src/utils';
 

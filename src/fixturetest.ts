@@ -1,3 +1,8 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+// TODO: temp file for fixture debugging; the tests/fixture.test.ts will contain the final version
+
 import {BBS} from './bbs';
 import generatorFixture from '../fixtures/bls12-381-sha-256/generators.json';
 import h2s001 from '../fixtures/bls12-381-sha-256/h2s/h2s001.json'

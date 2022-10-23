@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { PointG1, PointG2 } from '@noble/bls12-381';
 import { Keccak, shake256 } from '@noble/hashes/sha3';
 import { HashXOF } from '@noble/hashes/utils';

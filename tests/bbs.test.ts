@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import {BBS} from '../src/bbs';
 import * as crypto from 'crypto';
 import * as utils from '../src/utils';

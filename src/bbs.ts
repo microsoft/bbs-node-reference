@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { sha256 } from '@noble/hashes/sha256';
 import { extract as hkdfExtract, expand as hkdfExpand } from '@noble/hashes/hkdf';
 import * as utils from './utils';
