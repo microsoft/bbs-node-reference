@@ -6,7 +6,7 @@ import { extract as hkdfExtract, expand as hkdfExpand } from '@noble/hashes/hkdf
 import * as utils from './utils';
 import * as bls from '@noble/bls12-381';
 import { Ciphersuite, BLS12_381_SHA256_Ciphersuite } from './ciphersuite';
-import { encode_for_hash, HashInput, DirectUin8Array } from './hash';
+import { encode_for_hash, DirectUin8Array } from './hash';
 import * as crypto from 'crypto';
 
 export interface BBSSignature {

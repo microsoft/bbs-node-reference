@@ -4,7 +4,7 @@
 import * as bls from '@noble/bls12-381';
 import * as crypto from 'crypto';
 import { Hash, XOF } from './hash';
-import { PointG1, PointG2, Fr, utils, Fp2, Fp } from "@noble/bls12-381";
+import { PointG1, PointG2, Fr } from "@noble/bls12-381";
 import { bytesToHex, hexToBytes, concatBytes, i2osp, strxor } from './utils';
 
 export interface Ciphersuite {
