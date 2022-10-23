@@ -4,13 +4,21 @@ import { HashXOF } from '@noble/hashes/utils';
 import { BLS12_381_SHA256_Ciphersuite, Ciphersuite } from './ciphersuite';
 import { concatBytes, i2osp } from './utils';
 
-export type HashInput = PointG1 | PointG2 | string | number | bigint | Uint8Array;
+// Uint8Array hashed directly, without pre-pending its length
+export class DirectUin8Array {
+  a: Uint8Array;
+  constructor(a: Uint8Array) {
+    this.a = a;
+  }
+}
+export type HashInput = DirectUin8Array | PointG1 | PointG2 | string | number | bigint | Uint8Array;
 
 export function HashInputToBytes(data: HashInput, cs: Ciphersuite = BLS12_381_SHA256_Ciphersuite): Uint8Array {
 
   if (typeof data === 'string') {
     return Buffer.from(data, 'utf-8');
-  // } else if octet string for public key (TODO)
+  } else if (data instanceof DirectUin8Array) {
+    return data.a;
   } else if (data instanceof PointG1) {
     return cs.point_to_octets_g1(data);
   } else if (data instanceof PointG2) {
@@ -19,8 +27,8 @@ export function HashInputToBytes(data: HashInput, cs: Ciphersuite = BLS12_381_SH
     return i2osp(data, cs.octet_scalar_length);
   } else if (typeof data === 'number') {
     return i2osp(data, 8);
-  } else if (data instanceof Uint8Array) { // TODO: not in spec, am I still using this?
-    return data;
+  } else if (data instanceof Uint8Array) {
+    return concatBytes(i2osp(data.length, 8), data);
   } else {
     throw "invalid input";
   }

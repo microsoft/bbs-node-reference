@@ -3,7 +3,7 @@ import { extract as hkdfExtract, expand as hkdfExpand } from '@noble/hashes/hkdf
 import * as utils from './utils';
 import * as bls from '@noble/bls12-381';
 import { Ciphersuite, BLS12_381_SHA256_Ciphersuite } from './ciphersuite';
-import { encode_for_hash, HashInput } from './hash';
+import { encode_for_hash, HashInput, DirectUin8Array } from './hash';
 import * as crypto from 'crypto';
 
 export interface BBSSignature {
@@ -30,7 +30,7 @@ export interface BBSProof {
   mHat: bigint[]
 }
 
-const modR = (i: bigint) => bls.utils.mod(i,bls.CURVE.r); // TODO: use that more
+const modR = (i: bigint) => bls.utils.mod(i,bls.CURVE.r);
 const checkNonZeroFr = (i: bigint, message: string) => {if (i === 0n || i >= bls.CURVE.r) throw message + "; " + ((i === 0n) ? "zero" : ">r")};
 
 export class BBS {
@@ -40,7 +40,7 @@ export class BBS {
     this.cs = cs;
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-keygen
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-keygen
   KeyGen(IKM: Uint8Array, key_info: Uint8Array = new Uint8Array()): Uint8Array {
     const L = 72; // ceil((3 * ceil(log2(q))) / 16) // TODO: double check the value  
     if (IKM.length < 32) {
@@ -61,30 +61,32 @@ export class BBS {
     return utils.numberTo32BytesBE(SK);
   }
 
-  //https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-sktopk
+  //https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-sktopk
   SkToPk(SK: Uint8Array): Uint8Array {
     const W = bls.PointG2.fromPrivateKey(SK); // TODO: check that BLS impl and BBS spec match here (FIXME: not clear)
     return this.cs.point_to_octets_g2(W);
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-sign
-  Sign(SK: Uint8Array, PK: Uint8Array, header: Uint8Array, msg: Uint8Array[], generators: Generators): Uint8Array {
-    if (msg.length !== generators.H.length) {
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-sign
+  Sign(SK: Uint8Array, PK: Uint8Array, header: Uint8Array, messages: bigint[], generators: Generators): Uint8Array {
+    if (messages.length !== generators.H.length) {
       throw "msg and H should have the same length";
     }
     const W = bls.PointG2.fromHex(PK);
 
-    const L = msg.length;
-    const domain = this.hash_to_scalar([PK,L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header], 1)[0];
-    const [e, s] = this.hash_to_scalar([SK, domain, ...msg], 2);
+    const L = messages.length;
+
+    const dom_for_hash = encode_for_hash([new DirectUin8Array(PK),L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header]);
+    const domain = this.hash_to_scalar(dom_for_hash, 1)[0];
+    const e_s_for_hash = encode_for_hash([new DirectUin8Array(SK), domain, ...messages]); // FIXME: SK also need to be encoded directly for fixtures to pass, but not mentioned in the spec
+    const [e, s] = this.hash_to_scalar(e_s_for_hash, 2);
     
     // B = P1 + Q_1 * s + Q_2 * domain + H_1 * msg_1 + ... + H_L * msg_L
     let B = this.cs.P1;
     B = B.add(generators.Q1.multiply(s));
     B = B.add(generators.Q2.multiply(domain));
     for (let i = 0; i < L; i++) {
-      const scalarMsg = this.MapMessageToScalarAsHash(msg[i]);
-      B = B.add(generators.H[i].multiply(scalarMsg));
+      B = B.add(generators.H[i].multiply(messages[i]));
     }
 
     // A = B * (1 / (SK + e))
@@ -96,23 +98,25 @@ export class BBS {
     return signature_octets;
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-verify
-  Verify(PK: Uint8Array, signature: Uint8Array, header: Uint8Array, msg: Uint8Array[], generators: Generators, skipPKValidation: boolean = false): void {
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-verify
+  Verify(PK: Uint8Array, signature: Uint8Array, header: Uint8Array, messages: bigint[], generators: Generators, skipPKValidation: boolean = false): void {
     const sig = this.octets_to_signature(signature);
     const W = this.octets_to_pubkey(PK, skipPKValidation);
-    const L = msg.length;
-    const domain = this.hash_to_scalar([PK,L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header], 1)[0];
+    const L = messages.length;
+    const dom_for_hash = encode_for_hash([new DirectUin8Array(PK),L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header]);
+    const domain = this.hash_to_scalar(dom_for_hash, 1)[0];
 
     // B = P1 + Q1 * s + Q2 * domain + H_1 * msg_1 + ... + H_L * msg_L
     let B = this.cs.P1;
     B = B.add(generators.Q1.multiply(sig.s));
     B = B.add(generators.Q2.multiply(domain));
     for (let i = 0; i < L; i++) {
-      const scalarMsg = this.MapMessageToScalarAsHash(msg[i]);
-      B = B.add(generators.H[i].multiply(scalarMsg));
+      B = B.add(generators.H[i].multiply(messages[i]));
     }
        
     // check that e(A, W + P2 * e) * e(B, -P2) == Identity_GT
+    // (using the pairing optimization to skip final exponentiation in the pairing
+    // and do it after the multiplication)
     const lh = bls.pairing(sig.A, W.add(bls.PointG2.BASE.multiply(sig.e)), false);
     const rh = bls.pairing(B, bls.PointG2.BASE.negate(), false);
     const pairing = lh.multiply(rh).finalExponentiate();
@@ -121,28 +125,29 @@ export class BBS {
     }
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-proofgen
-  ProofGen(PK: Uint8Array, signature: Uint8Array, header: Uint8Array, ph: Uint8Array, messages: Uint8Array[], generators: Generators, disclosed_indexes: number[]): Uint8Array {
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-proofgen
+  ProofGen(PK: Uint8Array, signature: Uint8Array, header: Uint8Array, ph: Uint8Array, messages: bigint[], generators: Generators, disclosed_indexes: number[]): Uint8Array {
     utils.log("ProofGen");
     const L = messages.length;
     const R = disclosed_indexes.length;
     const U = L - R;
     const prf_len = 256; // TODO: double check that ceil(ceil(log2(r))/8)
-    const msgScalars = messages.map(v => this.MapMessageToScalarAsHash(v));
 
     const signature_result = this.octets_to_signature(signature);
     
     const iSet = new Set<number>(disclosed_indexes);
-    const i = Array.from(iSet).sort();
+    const i = Array.from(iSet).sort((a,b) => a-b);
     utils.log("i: " + i);
     const jSet = new Set<number>(Array.from({length: L}, (e, i)=> i+1));
     iSet.forEach(v => jSet.delete(v));
-    const j = Array.from(jSet).sort();
+    const j = Array.from(jSet).sort((a,b) => a-b);
     utils.log("j: " + j);
 
-    const domain = this.hash_to_scalar([PK,L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header], 1)[0];
+    const dom_for_hash = encode_for_hash([new DirectUin8Array(PK),L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header]);
+    utils.log("dom_for_hash: " + dom_for_hash);
+    const domain = this.hash_to_scalar(dom_for_hash, 1)[0];
     utils.log("domain: " + domain);
-    const scalars = this.hash_to_scalar([crypto.randomBytes(prf_len)], 6);
+    const scalars = this.hash_to_scalar(crypto.randomBytes(prf_len), 6);
     const r1 = scalars[0];
     utils.log("r1: " + r1);
     const r2 = scalars[1];
@@ -156,14 +161,14 @@ export class BBS {
     const sTilda = scalars[5];
     utils.log("sTilda: " + sTilda);
 
-    const mTilda = this.hash_to_scalar([crypto.randomBytes(prf_len)], U);
+    const mTilda = this.hash_to_scalar(crypto.randomBytes(prf_len), U);
     utils.log("mTilda: " + mTilda);
     // B = P1 + Q_1 * s + Q_2 * domain + H_1 * msg_1 + ... + H_L * msg_L
     let B = this.cs.P1;
     B = B.add(generators.Q1.multiply(signature_result.s));
     B = B.add(generators.Q2.multiply(domain));
     for (let k = 0; k < L; k++) {
-      B = B.add(generators.H[k].multiply(msgScalars[k]));
+      B = B.add(generators.H[k].multiply(messages[k]));
     }
     utils.log("B: " + B);
 
@@ -182,8 +187,10 @@ export class BBS {
     }
     utils.log("C2: " + C2);
     //  c_array = (A', Abar, D, C1, C2, R, i1, ..., iR, msg_i1, ..., msg_iR, domain, ph)
-    const disclosedMsgScalars = utils.filterDisclosedMessages(msgScalars, disclosed_indexes);
-    const c = this.hash_to_scalar([APrime, ABar, D, C1, C2, R, ...i, ...disclosedMsgScalars, domain, ph], 1)[0];
+    const disclosedMsg = utils.filterDisclosedMessages(messages, disclosed_indexes);
+    const iZeroBased = i.map(v => v-1); // TODO: spec's fixtures assume these are 0-based; double-check that
+    const c_for_hash = encode_for_hash([APrime, ABar, D, C1, C2, R, ...iZeroBased, ...disclosedMsg, domain, ph]);
+    const c = this.hash_to_scalar(c_for_hash, 1)[0];
     
     const eHat = modR(eTilda + modR(c * signature_result.e)); // e^ = c * e + e~ mod r 
     const r2Hat = modR(r2Tilda + modR(c * r2)); // r2^ = c * r2 + r2~ mod r
@@ -191,33 +198,34 @@ export class BBS {
     const sHat = modR(sTilda + modR(c * sPrime)); // s^ = c * s' + s~ mod r
     const mHat: bigint[] = [];
     for (let k = 0; k < U; k++) {
-      const scalarMsg = this.MapMessageToScalarAsHash(messages[j[k]-1]);
-      mHat[k] = modR(mTilda[k] + modR(c * scalarMsg)); // m^_j = c * msg_j + m~_j mod r
+      mHat[k] = modR(mTilda[k] + modR(c * messages[j[k]-1])); // m^_j = c * msg_j + m~_j mod r
     }
 
     const proof = { APrime: APrime, ABar: ABar, D: D, c: c, eHat: eHat, r2Hat: r2Hat, r3Hat: r3Hat, sHat: sHat, mHat: mHat }    
     return this.proof_to_octets(proof);
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-proofverify
-  ProofVerify(PK: Uint8Array, proof: Uint8Array, header: Uint8Array, ph: Uint8Array, disclosed_messages: Uint8Array[], generators: Generators, RevealedIndexes: number[], skipPKValidation: boolean = false): void {
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-proofverify
+  ProofVerify(PK: Uint8Array, proof: Uint8Array, header: Uint8Array, ph: Uint8Array, disclosed_messages: bigint[], generators: Generators, RevealedIndexes: number[], skipPKValidation: boolean = false): void {
     utils.log("ProofVerify");
       const L = generators.H.length;
       const R = RevealedIndexes.length;
       const U = L - R;
-      const msgScalars = disclosed_messages.map(v => this.MapMessageToScalarAsHash(v));
+      //const msgScalars = disclosed_messages.map(v => this.MapMessageToScalarAsHash(v));
       const W = this.octets_to_pubkey(PK, skipPKValidation);
 
       const iSet = new Set<number>(RevealedIndexes);
-      const i = Array.from(iSet).sort();
+      const i = Array.from(iSet).sort((a,b) => a-b);
       utils.log("i: " + i);
       const jSet = new Set<number>(Array.from({length: L}, (e, i)=> i+1));
       iSet.forEach(v => jSet.delete(v));
-      const j = Array.from(jSet).sort();
+      const j = Array.from(jSet).sort((a,b) => a-b);
       utils.log("j: " + j);
 
       const proof_value = this.octets_to_proof(proof);
-      const domain = this.hash_to_scalar([PK,L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header], 1)[0];
+      const dom_for_hash = encode_for_hash([new DirectUin8Array(PK),L,generators.Q1,generators.Q2,...generators.H,this.cs.Ciphersuite_ID,header]);
+      utils.log("dom_for_hash: " + dom_for_hash);
+      const domain = this.hash_to_scalar(dom_for_hash, 1)[0];
       utils.log("domain: " + domain);
       // C1 = (Abar - D) * c + A' * e^ + Q1 * r2^
       const C1 = proof_value.ABar.subtract(proof_value.D).multiply(proof_value.c)
@@ -228,7 +236,7 @@ export class BBS {
       let T = this.cs.P1;
       T = T.add(generators.Q2.multiply(domain));
       for (let k = 0; k < R; k++) {
-        T = T.add(generators.H[i[k]-1].multiply(msgScalars[k]));
+        T = T.add(generators.H[i[k]-1].multiply(disclosed_messages[k]));
       }
       // C2 = T * c - D * r3^ + Q_1 * s^ + H_j1 * m^_j1 + ... + H_jU * m^_jU
       let C2 = T.multiply(proof_value.c)
@@ -239,7 +247,11 @@ export class BBS {
       }
       utils.log("C2: " + C2);
       // cv_array = (A', Abar, D, C1, C2, R, i1, ..., iR, msg_i1, ..., msg_iR, domain, ph)
-      const cv = this.hash_to_scalar([proof_value.APrime, proof_value.ABar, proof_value.D, C1, C2, R, ...i, ...msgScalars, domain, ph], 1)[0];                
+      const iZeroBased = i.map(v => v-1); // TODO: spec's fixtures assume these are 0-based; double-check that
+      const cv_for_hash = encode_for_hash([proof_value.APrime, proof_value.ABar, proof_value.D, C1, C2, R, ...iZeroBased, ...disclosed_messages, domain, ph]);
+      utils.log("cv_for_hash: " + cv_for_hash);
+      const cv = this.hash_to_scalar(cv_for_hash, 1)[0];                
+      utils.log("cv: " + cv);
 
       if (proof_value.c !== cv) {
         utils.log("c : " + proof_value.c);
@@ -251,6 +263,8 @@ export class BBS {
         throw "Invalid proof (A')";
       }
 
+      // (using the pairing optimization to skip final exponentiation in the pairing
+      // and do it after the multiplication)
       const lh = bls.pairing(proof_value.APrime, W, false);
       const rh = bls.pairing(proof_value.ABar, bls.PointG2.BASE.negate(), false);
       const pairing = lh.multiply(rh).finalExponentiate();
@@ -259,7 +273,7 @@ export class BBS {
       }
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-creategenerators
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-creategenerators
   CreateGenerators(length: number): Generators {
       // NOTE: we don't implement CreateGenerators because we need a hash to G1 not supported by the bls library (FIXME)
       const test_vectors: bls.PointG1[] = [
@@ -287,25 +301,25 @@ export class BBS {
       };
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-mapmessagetoscalar
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-mapmessagetoscalar
   MapMessageToScalarAsHash(msg: Uint8Array, dst: Uint8Array = Buffer.from(this.cs.Ciphersuite_ID + "MAP_MSG_TO_SCALAR_AS_HASH_", "utf8")): bigint {
     if (dst.length > 255) {
       throw "dst too long";
     }
-    const result = this.hash_to_scalar([msg], 1, dst);
+    const msg_for_hash = encode_for_hash([msg]);
+    const result = this.hash_to_scalar(msg_for_hash, 1, dst);
     return result[0];
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-hash-to-scalar
-  hash_to_scalar(input: HashInput[], count: number, dst: Uint8Array = Buffer.from(this.cs.Ciphersuite_ID + "H2S_", "utf8")): bigint[] {
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-hash-to-scalar
+  hash_to_scalar(msg_octets: Uint8Array, count: number, dst: Uint8Array = Buffer.from(this.cs.Ciphersuite_ID + "H2S_", "utf8")): bigint[] {
     const scalars: bigint[] = [];
     const len_in_bytes = count * this.cs.expand_len;
     let t = 0;
-    const msg_octets = encode_for_hash(input);
     let cont = true;
     while (cont) {
       const msg_prime =  utils.concatBytes(msg_octets, utils.i2osp(t,1), utils.i2osp(count, 4));
-      const uniform_bytes = hkdfExpand(sha256, msg_prime, dst, len_in_bytes);
+      const uniform_bytes = this.cs.expand_message(msg_prime, dst, len_in_bytes);
       for (let i=0; i<count; i++) {
         scalars.push(modR(utils.os2ip(uniform_bytes.slice(i*this.cs.expand_len,(i+1)*this.cs.expand_len))));
       }
@@ -318,7 +332,7 @@ export class BBS {
     return scalars;
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-octetstosignature
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-octetstosignature
   octets_to_signature(signature_octets: Uint8Array): BBSSignature {
     if (signature_octets.length !== this.cs.octet_point_length + 2 * this.cs.octet_scalar_length) {
         throw "Invalid signature_octets length";
@@ -343,7 +357,7 @@ export class BBS {
     return { A: A, e: e, s: s }
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-signaturetooctets
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-signaturetooctets
   signature_to_octets(signature: BBSSignature): Uint8Array {
     const A_octets = this.cs.point_to_octets_g1(signature.A);
     const e_octets = utils.i2osp(signature.e, this.cs.octet_scalar_length);
@@ -351,7 +365,7 @@ export class BBS {
     return utils.concatBytes(A_octets, e_octets, s_octets);
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-octetstoproof
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-octetstoproof
   octets_to_proof(proof_octets: Uint8Array): BBSProof {
     const proof_len_floor = 3 * this.cs.octet_point_length + 5 * this.cs.octet_scalar_length;
     if (proof_octets.length < proof_len_floor) {
@@ -393,7 +407,7 @@ export class BBS {
     return {APrime: APrime, ABar: ABar, D: D, c: c, eHat: eHat, r2Hat: r2Hat, r3Hat: r3Hat, sHat: sHat, mHat: mHat}
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-prooftooctets
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-prooftooctets
   proof_to_octets(proof: BBSProof): Uint8Array  {
     let proof_octets_elements: Uint8Array[] = [
       this.cs.point_to_octets_g1(proof.APrime),
@@ -413,7 +427,7 @@ export class BBS {
     return utils.concatBytes(...proof_octets_elements);
   }
 
-  // https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html#name-octetstopublickey
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-octetstopublickey
   octets_to_pubkey(PK: Uint8Array, skipPKValidation: boolean = false): bls.PointG2 {
     const W = this.cs.octets_to_point_g2(PK);
     if (!skipPKValidation) {

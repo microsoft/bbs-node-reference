@@ -44,6 +44,14 @@ export function concatBytes(...arrays: Uint8Array[]): Uint8Array {
   return result;
 }
 
+export function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const arr = new Uint8Array(a.length);
+  for (let i = 0; i < a.length; i++) {
+    arr[i] = a[i] ^ b[i];
+  }
+  return arr;
+}
+
 export function toRawBytes(P: PointG1 | PointG2, isCompressed = false) {
   return hexToBytes(P.toHex(isCompressed));
 }

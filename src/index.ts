@@ -12,8 +12,10 @@ try {
 
     // create the generators
     const length = 5;
-    let msg = Array(length).fill(null).map(v => crypto.randomBytes(20));
     const generators = bbs.CreateGenerators(length);
+
+    // create random messages
+    let msg = Array(length).fill(null).map(v => bbs.MapMessageToScalarAsHash(crypto.randomBytes(20)));
 
     // create the signature
     const header = Buffer.from("HEADER", "utf-8");

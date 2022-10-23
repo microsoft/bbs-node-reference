@@ -5,15 +5,17 @@ import * as utils from '../src/utils';
 test("End-to-end test", async () => {
     const bbs = new BBS();
 
-    // generate issuer keys
+    // generate random issuer keys
     const SK = bbs.KeyGen(crypto.randomBytes(32));
     const PK = bbs.SkToPk(SK);
 
     // create the generators
     const length = 5;
-    let msg = Array(length).fill(null).map(v => crypto.randomBytes(20));
     const generators = bbs.CreateGenerators(length);
 
+    // create random messages
+    let msg = Array(length).fill(null).map(v => bbs.MapMessageToScalarAsHash(crypto.randomBytes(20)));
+    
     // create the signature
     const header = Buffer.from("HEADER", "utf-8");
     const signature = bbs.Sign(SK, PK, header, msg, generators);
@@ -29,7 +31,6 @@ test("End-to-end test", async () => {
     const disclosed_msg = utils.filterDisclosedMessages(msg, disclosed_indexes);
 
     bbs.ProofVerify(PK, proof, header, ph, disclosed_msg, generators, disclosed_indexes);
-
 });
 
 
