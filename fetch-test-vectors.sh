@@ -7,7 +7,7 @@ if [ -d "$FILE" ]; then
 fi
 
 # TODO: update once fixtures are merged in the spec's main
-urlPrefix=https://raw.githubusercontent.com/BasileiosKal/bbs-signature/fixtures-update/tooling/fixtures/fixture_data/bls12-381-sha-256/
+urlPrefix=https://raw.githubusercontent.com/decentralized-identity/bbs-signature/main/tooling/fixtures/fixture_data/bls12-381-sha-256/
 mkdir -p fixtures
 mkdir -p fixtures/bls12-381-sha-256
 mkdir -p fixtures/bls12-381-sha-256/h2s
