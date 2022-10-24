@@ -99,5 +99,5 @@ export function filterDisclosedMessages(msg: any[], disclosed_indexes: number[])
 }
 
 export function log(...s: any) : void {
-  console.log(...s);
+  // console.log(...s); uncomment to print out debug statement
 }

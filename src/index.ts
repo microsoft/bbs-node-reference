@@ -11,7 +11,7 @@ try {
     // generate issuer keys
     const SK = bbs.KeyGen(crypto.randomBytes(32));
     const PK = bbs.SkToPk(SK);
-    console.log("PK: " + PK);
+    utils.log("PK: " + PK);
 
     // create the generators
     const length = 5;
