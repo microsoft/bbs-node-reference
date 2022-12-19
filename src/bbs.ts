@@ -277,30 +277,28 @@ export class BBS {
   }
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-creategenerators
-  CreateGenerators(length: number): Generators {
-      // NOTE: we don't implement CreateGenerators because we need a hash to G1 not supported by the bls library (FIXME)
-      const test_vectors: bls.PointG1[] = [
-        this.cs.octets_to_point_g1(utils.hexToBytes("90248350d94fd550b472a54269e28b680757d8cbbe6bb2cb000742c07573138276884c2872a8285f4ecf10df6029be15")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("8fb7d5c43273a142b6fc445b76a8cdfc0f96c5fdac7cdd73314ac4f7ec4990a0a6f28e4ad97fb0a3a22efb07b386e3ff")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("8241e3e861aaac2a54a8d7093301143d7d3e9911c384a2331fcc232a3e64b4882498ce4d9da8904ffcbe5d6eadafc82b")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("99bb19d202a4019c14a36933264ae634659994076bf02a94135e1026ea309c7d3fd6da60c7929d30b656aeaba7c0dcec")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("81779fa5268e75a980799c0a01677a763e14ba82cbf0a66c653edc174057698636507ac58e73522a59585558dca80b42")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("98a3f9af71d391337bc6ae5d26980241b6317d5d71570829ce03d63c17e0d2164e1ad793645e1762bfcc049a17f5994b")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("aca6a84770bb1f515591b4b95d69777856ddc52d5439325839e31ce5b6237618a9bc01a04b0057d33eab14341504c7e9")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("b96e206d6cf32b51d2f4d543972d488a4c4cbc5d994f6ebb0bdffbc5459dcb9a8e5ab045c5949dc7eb33b0545b62aae3")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("8edf840b56ecf8d7c5a9c4a0aaf8a5525f3480df735743298dd2f4ae1cbb56f56ed6a04ef6fa7c92cd68d9101c7b8c8f")),
-        this.cs.octets_to_point_g1(utils.hexToBytes("86d4ae04738dc082eb37e753bc8ec35a8d982e463559214d0f777599f71aa1f95780b3dccbdcae45e146e5c7623dfe7d")),
-      ];
-
+  async CreateGenerators(length: number): Promise<Generators> {
+      const count = length + 2; // Q1, Q2, and generators
+      const seed_dst = Buffer.from(this.cs.Ciphersuite_ID + 'SIG_GENERATOR_SEED_', 'utf-8');
+      let v = this.cs.expand_message(this.cs.generator_seed, seed_dst, this.cs.seed_len);
+      let n = 1;
       const generators: bls.PointG1[] = [];
-      for (let i = 0; i < length; i++) {
-        generators[i] = test_vectors[i];
+      for (let i = 0; i < count; i++) {
+          let cont = true;
+          let candidate = bls.PointG1.ZERO;
+          while (cont) {
+              v = this.cs.expand_message(utils.concatBytes(v, utils.i2osp(n, 4)), seed_dst, this.cs.seed_len);
+              n += 1;
+              candidate = await this.cs.hash_to_curve_g1(v); // generator_dst specified in the hash_to_curve_g1 function directly
+              cont = generators.includes(candidate);
+            }
+          generators.push(candidate);
+          utils.log("candidate " + i + ": " + utils.bytesToHex(this.cs.point_to_octets_g1(candidate)));
       }
-
       return {
-        Q1: this.cs.octets_to_point_g1(utils.hexToBytes("b57ec5e001c28d4063e0b6f5f0a6eee357b51b64d789a21cf18fd11e73e73577910182d421b5a61812f5d1ca751fa3f0")),
-        Q2: this.cs.octets_to_point_g1(utils.hexToBytes("909573cbb9da401b89d2778e8a405fdc7d504b03f0158c31ba64cdb9b648cc35492b18e56088b44c8b4dc6310afb5e49")),
-        H: generators
+        Q1: generators[0],
+        Q2: generators[1],
+        H: generators.slice(2)
       };
   }
 

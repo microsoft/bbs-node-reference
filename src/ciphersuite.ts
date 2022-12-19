@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import * as bls from '@noble/bls12-381';
 import * as crypto from 'crypto';
 import { Hash, XOF } from './hash';
 import { PointG1, PointG2, Fr } from "@noble/bls12-381";
@@ -53,17 +52,16 @@ export const BLS12_381_SHA256_Ciphersuite: Ciphersuite = {
         return serialized;
     },
     octets_to_point_g1: (ostr: Uint8Array) => {
-        const P = bls.PointG1.fromHex(bytesToHex(ostr));
+        const P = PointG1.fromHex(bytesToHex(ostr));
         return P;
     },
     octets_to_point_g2: (ostr: Uint8Array) => {
-        const P = bls.PointG2.fromHex(bytesToHex(ostr));
+        const P = PointG2.fromHex(bytesToHex(ostr));
         return P;
     },
     // implements https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#section-8.8.1
     hash_to_curve_g1: async (input: Uint8Array) => {
-        // the noble library only implements hash to G2, so we need to implement hash to G1 here (FIXME)
-        throw "not implemented";
+        return await PointG1.hashToCurve(input, {DST: BLS12_381_SHA256_Ciphersuite.Ciphersuite_ID + "SIG_GENERATOR_DST_"}); // FIXME: DST elsewhere
     },
     hash_to_curve_g1_dst: Buffer.from("BBS_BLS12381G1_XOF:SHAKE-256_SSWU_RO",'utf-8'),
     hash_to_field: (input: Uint8Array) => {return Fr.ONE},
