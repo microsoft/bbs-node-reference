@@ -33,7 +33,7 @@ import proof013 from '../fixtures/bls12-381-sha-256/proof/proof013.json';
 import { bytesToHex, hexToBytes } from './utils';
 
 
-try {
+void (async () => { try {
     const bbs = new BBS();
 
     // test map messages to scalar as hash
@@ -76,7 +76,7 @@ try {
 
             const SK = hexToBytes(signatures[i].signerKeyPair.secretKey);
 
-            const actualGenerators = bbs.CreateGenerators(10);
+            const actualGenerators = await bbs.CreateGenerators(10);
             if (!generators.Q1.equals(actualGenerators.Q1)) { throw `invalid Q1 generator; expected: ${generators.Q1}, actual: ${actualGenerators.Q1}`; }
             if (!generators.Q2.equals(actualGenerators.Q2)) { throw `invalid Q2 generator; expected: ${generators.Q2}, actual: ${actualGenerators.Q2}`; }
             generators.H.forEach((H, idx, a) => {
@@ -132,4 +132,4 @@ try {
 }
 catch (e) {
     console.log(e);
-}
+}})();

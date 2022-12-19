@@ -5,7 +5,7 @@ import { BBS } from './bbs';
 import * as crypto from 'crypto';
 import * as utils from './utils';
 
-try {
+void (async () => { try {
     const bbs = new BBS();
 
     // generate issuer keys
@@ -15,7 +15,7 @@ try {
 
     // create the generators
     const length = 5;
-    const generators = bbs.CreateGenerators(length);
+    const generators = await bbs.CreateGenerators(length);
 
     // create random messages
     let msg = Array(length).fill(null).map(v => bbs.MapMessageToScalarAsHash(crypto.randomBytes(20)));
@@ -40,4 +40,4 @@ try {
 }
 catch (e) {
     console.log(e);
-}
+}})();
