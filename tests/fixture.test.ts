@@ -1,12 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+// test fixtures
+
 import * as fs from 'fs';
-import {BBS} from '../src/bbs';
+import {BBS, modR} from '../src/bbs';
+import { os2ip } from '../src/utils';
 import { bytesToHex, bytesToNumberBE, hexToBytes } from '../src/utils';
 import generatorFixture from '../fixtures/bls12-381-sha-256/generators.json';
 import h2s from '../fixtures/bls12-381-sha-256/h2s.json';
-import mmtsah from '../fixtures/bls12-381-sha-256/MapMessageToScalarAsHash.json'
+import mmtsah from '../fixtures/bls12-381-sha-256/MapMessageToScalarAsHash.json';
+import mockedRng from '../fixtures/bls12-381-sha-256/mockedRng.json';
+
 interface Signature {
     caseName: string;
     signerKeyPair: {
@@ -25,29 +30,6 @@ const fixturePath = "fixtures/bls12-381-sha-256";
 const sigFiles = fs.readdirSync(`${fixturePath}/signature`);
 const signatures = sigFiles.filter(f => f.endsWith('.json')).map(f => require(`../${fixturePath}/signature/${f}`) as Signature);
 
-// import signature001 from '../fixtures/bls12-381-sha-256/signature/signature001.json';
-// import signature002 from '../fixtures/bls12-381-sha-256/signature/signature002.json';
-// import signature003 from '../fixtures/bls12-381-sha-256/signature/signature003.json';
-// import signature004 from '../fixtures/bls12-381-sha-256/signature/signature004.json';
-// import signature005 from '../fixtures/bls12-381-sha-256/signature/signature005.json';
-// import signature006 from '../fixtures/bls12-381-sha-256/signature/signature006.json';
-// import signature007 from '../fixtures/bls12-381-sha-256/signature/signature007.json';
-// import signature008 from '../fixtures/bls12-381-sha-256/signature/signature008.json';
-// import signature009 from '../fixtures/bls12-381-sha-256/signature/signature009.json';
-// import proof001 from '../fixtures/bls12-381-sha-256/proof/proof001.json';
-// import proof002 from '../fixtures/bls12-381-sha-256/proof/proof002.json';
-// import proof003 from '../fixtures/bls12-381-sha-256/proof/proof003.json';
-// import proof004 from '../fixtures/bls12-381-sha-256/proof/proof004.json';
-// import proof005 from '../fixtures/bls12-381-sha-256/proof/proof005.json';
-// import proof006 from '../fixtures/bls12-381-sha-256/proof/proof006.json';
-// import proof007 from '../fixtures/bls12-381-sha-256/proof/proof007.json';
-// import proof008 from '../fixtures/bls12-381-sha-256/proof/proof008.json';
-// import proof009 from '../fixtures/bls12-381-sha-256/proof/proof009.json';
-// import proof010 from '../fixtures/bls12-381-sha-256/proof/proof010.json';
-// import proof011 from '../fixtures/bls12-381-sha-256/proof/proof011.json';
-// import proof012 from '../fixtures/bls12-381-sha-256/proof/proof012.json';
-// import proof013 from '../fixtures/bls12-381-sha-256/proof/proof013.json';
-// TODO: read the test vectors from the json files dynamically, like:
 interface Proof {
     caseName: string;
     signerPublicKey: string;
@@ -59,18 +41,36 @@ interface Proof {
       valid: boolean;
       reason: string;
     };
-}
-  
-  
+}  
 const proofFiles = fs.readdirSync(`${fixturePath}/proof`);
 const proofs = proofFiles.filter(f => f.endsWith('.json')).map(f => require(`../${fixturePath}/proof/${f}`) as Proof);
 
-// test fixtures
-
+// create the BBS instance
 const bbs = new BBS();
 
 // common generators
 const HGenerators = generatorFixture.MsgGenerators.map(v => bbs.cs.octets_to_point_g1(hexToBytes(v)));
+
+// mock random number generator (for proof generation)
+const MOCK_RNG_SEED = "332e313431353932363533353839373933323338343632363433333833323739"; // from spec
+const seeded_random_scalars = (SEED: Uint8Array, count: number): bigint[] => {
+    const dst = Buffer.from(bbs.cs.Ciphersuite_ID + "MOCK_RANDOM_SCALARS_DST_", "utf8");
+    const out_len = bbs.cs.expand_len * count;
+    const v = bbs.cs.expand_message(SEED, dst, out_len);
+    const r: bigint[] = [];
+    for (let i=0; i<count; i++) {
+        const start_idx = i * bbs.cs.expand_len;
+        const end_idx = (i+1) * bbs.cs.expand_len;
+        r.push(modR(os2ip(v.slice(start_idx, end_idx))));
+    }
+    return r;
+}
+
+test("mocked_calculate_random_scalars", async () => {
+    const expected = mockedRng.mockedScalars.map(v => BigInt('0x' + v));
+    const actual = seeded_random_scalars(hexToBytes(MOCK_RNG_SEED), expected.length);
+    expect(actual).toEqual(expected);
+});
 
 test("hash_to_scalar", async () => {
     const dst = hexToBytes(h2s.dst);
@@ -88,9 +88,8 @@ test("MapMessageToScalarAsHash", async () => {
     }
 });
 
-// const signatures = [signature001, signature002, signature003, signature004, signature005, signature006, signature007, signature008, signature009];
 for (let i=0; i<signatures.length; i++) {
-    test(signatures[i].caseName, async () => {
+    test(`signature${String(i+1).padStart(3, '0')}: ${signatures[i].caseName}`, async () => {
 
         const PK = hexToBytes(signatures[i].signerKeyPair.publicKey);
         const msg = signatures[i].messages.map(v => bbs.MapMessageToScalarAsHash(hexToBytes(v)));
@@ -101,7 +100,6 @@ for (let i=0; i<signatures.length; i++) {
         }
         if (signatures[i].result.valid) {
             // recreate the signature
-
             const SK = bytesToNumberBE(hexToBytes(signatures[i].signerKeyPair.secretKey));
 
             const actualGenerators = await bbs.create_generators(10);

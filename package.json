@@ -7,7 +7,7 @@
     "build": "tsc",
     "bbs": "ts-node --files src/index.ts",
     "fixture": "ts-node --files src/fixturetest.ts",
-    "test": "./fetch-test-vectors.sh && jest"
+    "test": "./fetch-test-vectors.sh && jest --verbose"
   },
   "author": "Christian Paquin",
   "license": "MIT",

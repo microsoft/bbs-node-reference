@@ -35,7 +35,7 @@ export interface BBSProof {
   mHat: bigint[]
 }
 
-const modR = (i: bigint) => bls.utils.mod(i,bls.CURVE.r);
+export const modR = (i: bigint) => bls.utils.mod(i,bls.CURVE.r);
 const checkNonZeroFr = (i: bigint, message: string) => {if (i === 0n || i >= bls.CURVE.r) throw message + "; " + ((i === 0n) ? "zero" : ">r")};
 
 export class BBS {
@@ -183,11 +183,7 @@ export class BBS {
     utils.log("r3Tilda: " + r3Tilda);
     const sTilda = scalars[index++];
     utils.log("sTilda: " + sTilda);
-    // const mTilda = new Array(U).map((v, i, a) => scalars[index + i]); // TODO: this would be cleaner but doesn't work (?)
-    const mTilda: bigint[] = []
-    for (let i=0; i<U; i++) {
-      mTilda.push(scalars[index + i]);
-    }
+    const mTilda = new Array(U).fill(0n).map((v, i, a) => scalars[index + i]);
     utils.log("mTilda: " + mTilda);
 
     // B = P1 + Q_1 * s + Q_2 * domain + H_1 * msg_1 + ... + H_L * msg_L
