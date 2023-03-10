@@ -7,21 +7,12 @@ import { HashXOF } from '@noble/hashes/utils';
 import { BLS12_381_SHA256_Ciphersuite, Ciphersuite } from './ciphersuite';
 import { concatBytes, i2osp } from './utils';
 
-// Uint8Array hashed directly, without pre-pending its length
-export class DirectUin8Array {
-  a: Uint8Array;
-  constructor(a: Uint8Array) {
-    this.a = a;
-  }
-}
-export type HashInput = DirectUin8Array | PointG1 | PointG2 | string | number | bigint | Uint8Array;
+export type HashInput = PointG1 | PointG2 | string | number | bigint | Uint8Array;
 
 export function HashInputToBytes(data: HashInput, cs: Ciphersuite = BLS12_381_SHA256_Ciphersuite): Uint8Array {
 
   if (typeof data === 'string') {
     return Buffer.from(data, 'utf-8');
-  } else if (data instanceof DirectUin8Array) {
-    return data.a;
   } else if (data instanceof PointG1) {
     return cs.point_to_octets_g1(data);
   } else if (data instanceof PointG2) {
@@ -35,15 +26,6 @@ export function HashInputToBytes(data: HashInput, cs: Ciphersuite = BLS12_381_SH
   } else {
     throw "invalid input";
   }
-}
-
-// https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-encodeforhash
-export function encode_for_hash(input: HashInput[]): Uint8Array {
-  let octets_to_hash = new Uint8Array();
-  input.forEach(v => {
-    octets_to_hash = concatBytes(octets_to_hash, HashInputToBytes(v));
-  });
-  return octets_to_hash;
 }
 
 export class Hash {

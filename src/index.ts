@@ -15,7 +15,7 @@ void (async () => { try {
 
     // create the generators
     const length = 5;
-    const generators = await bbs.CreateGenerators(length);
+    const generators = await bbs.create_generators(length);
 
     // create random messages
     let msg = Array(length).fill(null).map(v => bbs.MapMessageToScalarAsHash(crypto.randomBytes(20)));
