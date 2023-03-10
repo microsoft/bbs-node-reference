@@ -6,11 +6,9 @@ if [ -d "$FILE" ]; then
     exit
 fi
 
-# TODO: update once fixtures are merged in the spec's main
 urlPrefix=https://raw.githubusercontent.com/decentralized-identity/bbs-signature/main/tooling/fixtures/fixture_data/bls12-381-sha-256/
 mkdir -p fixtures
 mkdir -p fixtures/bls12-381-sha-256
-mkdir -p fixtures/bls12-381-sha-256/h2s
 mkdir -p fixtures/bls12-381-sha-256/signature
 mkdir -p fixtures/bls12-381-sha-256/proof
 
@@ -28,15 +26,19 @@ echo fetching $url
 cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
 $cmd
 
-# fetch h2s
-for i in {1..2}
-do
-   file=$(printf "%s%.3d%s" "h2s/h2s" $i ".json")
-   url=$(printf "%s%s" $urlPrefix $file)
-   echo fetching $url
-   cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-   $cmd
-done
+# fetch h2s.json
+file=$(printf "%s%s" "h2s" ".json")
+url=$(printf "%s%s" $urlPrefix $file)
+echo fetching $url
+cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
+$cmd
+
+# fetch mockedRng.json
+file=$(printf "%s%s" "mockedRng" ".json")
+url=$(printf "%s%s" $urlPrefix $file)
+echo fetching $url
+cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
+$cmd
 
 # fetch signatures
 for i in {1..9}

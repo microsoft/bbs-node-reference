@@ -94,10 +94,10 @@ export function bytesToHex(uint8a: Uint8Array): string {
   return hex;
 }
 
-export function filterDisclosedMessages(msg: any[], disclosed_indexes: number[]): any[] {
+export function filterDisclosedMessages(msg: bigint[], disclosed_indexes: number[]): bigint[] {
   return msg.filter((v, i, a) => {return disclosed_indexes.includes(i+1)});
 }
 
 export function log(...s: any) : void {
-  // console.log(...s); uncomment to print out debug statement
+//  console.log(...s);  // uncomment to print out debug statements
 }

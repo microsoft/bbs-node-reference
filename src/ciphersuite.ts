@@ -21,11 +21,6 @@ export interface Ciphersuite {
     octets_to_point_g2: (ostr: Uint8Array) => PointG2,
     hash_to_curve_g1: (input: Uint8Array) => Promise<PointG1>,
     hash_to_curve_g1_dst: Uint8Array,
-    hash_to_field: (input: Uint8Array) => Fr,
-    hash_to_field_dst: Uint8Array,
-    message_generator_seed: Uint8Array,
-    blind_value_generator_seed: Uint8Array,
-    signature_dst_generator_seed: Uint8Array,
     seed_len: number,  // ceil((ceil(log2(r)) + k)/8)
     expand_len: number, // ceil((ceil(log2(r)) + k)/8)
     expand_message: (message: Uint8Array, dst: Uint8Array, len: number) => Uint8Array
@@ -64,11 +59,6 @@ export const BLS12_381_SHA256_Ciphersuite: Ciphersuite = {
         return await PointG1.hashToCurve(input, {DST: BLS12_381_SHA256_Ciphersuite.Ciphersuite_ID + "SIG_GENERATOR_DST_"}); // FIXME: DST elsewhere
     },
     hash_to_curve_g1_dst: Buffer.from("BBS_BLS12381G1_XOF:SHAKE-256_SSWU_RO",'utf-8'),
-    hash_to_field: (input: Uint8Array) => {return Fr.ONE},
-    hash_to_field_dst: Buffer.from("DEFAULT DST",'utf-8'),
-    message_generator_seed: Buffer.from("DEFAULT SEED",'utf-8'),
-    blind_value_generator_seed: Buffer.from("DEFAULT SEED",'utf-8'),
-    signature_dst_generator_seed: Buffer.from("DEFAULT SEED",'utf-8'),
     seed_len: 48,
     expand_len: 48,
     // expand_message_xmd
@@ -105,4 +95,4 @@ function expand_message_xmd(
   }
   
 
-// Note: we don't currently support the BLS12-381-SHAKE-256 ciphersuite because the underlying BLS library doesn't support SHAKE
+// TODO: implement the BLS12-381-SHAKE-256 ciphersuite
