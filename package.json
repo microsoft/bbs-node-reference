@@ -4,10 +4,10 @@
   "description": "BBS node reference implementation",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsc",
+    "fetch-fixtures": "./fetch-test-vectors.sh",
+    "build": "npm run fetch-fixtures && tsc",
     "bbs": "ts-node --files src/index.ts",
-    "fixture": "ts-node --files src/fixturetest.ts",
-    "test": "./fetch-test-vectors.sh && jest --verbose"
+    "test": "npm run fetch-fixtures && jest --verbose"
   },
   "author": "Christian Paquin",
   "license": "MIT",
