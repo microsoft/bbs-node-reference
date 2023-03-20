@@ -8,5 +8,6 @@ module.exports = {
   testEnvironment: "node",
   preset: "ts-jest",
   testTimeout: 15000,
-  testMatch: ["**/?(*.)+(spec|test).ts"]
+  testMatch: ["**/?(*.)+(spec|test).ts"],
+  coverageReporters: ['json-summary'],
 };
