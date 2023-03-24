@@ -27,8 +27,3 @@ jobs:
     - run: npm install
     - run: npm run build --if-present
     - run: npm test
-    - run: npm run coverage
-    - name: Update coverage badges
-      uses: jpb06/jest-badges-action@latest
-      with:
-        branches: main

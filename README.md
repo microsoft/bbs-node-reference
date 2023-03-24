@@ -2,13 +2,6 @@
 
 *WORK IN PROGRESS*
 
-[![CI](https://github.com/microsoft/bbs-node-reference/actions/workflows/nodejs-ci.yml/badge.svg)](https://github.com/microsoft/bbs-node-reference/actions/workflows/nodejs-ci.yml)
-![Branches](./badges/coverage-branches.svg)
-![Functions](./badges/coverage-functions.svg)
-![Lines](./badges/coverage-lines.svg)
-![Statements](./badges/coverage-statements.svg)
-![Jest coverage](./badges/coverage-jest%20coverage.svg)
-
 TypeScript reference implementation for the [BBS signature scheme](https://github.com/decentralized-identity/bbs-signature). The goal is to help understand and verify the specification. This is NOT a production-ready implementation; testing is minimal and no effort is made to optimize and protect against specialized attacks (e.g., side-channel resistance). 
 
 This project aims to keep up to date with the [latest specification](https://identity.foundation/bbs-signature/draft-looker-cfrg-bbs-signatures.html), but may be behind since the specification changes often; the current implementation matches the *11 March 2023* version of the specification, matching the [draft-irtf-cfrg-bbs-signatures-02](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bbs-signatures/02/) version submitted to the CFRG.
