@@ -194,12 +194,12 @@ export class BBS {
     const iZeroBased = i.map(v => v-1); // TODO: spec's fixtures assume these are 0-based; double-check that
     const c = this.calculate_challenge(ABar, BBar, C, iZeroBased, disclosedMsg, domain, ph);
 
-    const r4 = new bls.Fr(r1).invert().value; // r4 = r1^-1 (mod r)
+    const r4 = new bls.Fr(r1).negate().invert().value; // r4 = -r1^-1 (mod r)
     const r2Hat = modR(r2 + modR(r4 * c)); // r2^ = r2 + r4 * c (mod r)
     const r3Hat = modR(r3 + modR(signature_result.e * r4 * c)); // r3^ = r3 + e * r4 * c (mod r)
     const mHat: bigint[] = [];
     for (let k = 0; k < U; k++) {
-      mHat[k] = modR(mTilda[k] - modR(c * messages[j[k]-1])); // m^_j = m~_j - m_j * c (mod r)
+      mHat[k] = modR(mTilda[k] + modR(c * messages[j[k]-1])); // m^_j = m~_j + m_j * c (mod r)
     }
 
     const proof = { ABar: ABar, BBar: BBar, c: c, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat }
@@ -242,13 +242,13 @@ export class BBS {
         D = D.add(generators.H[i[k]-1].multiply(disclosed_messages[k]));
       }
 
-      // C = Bbar * r2^ + Abar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D(-c)
+      // C = Bbar * r2^ + Abar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D * c
       let C = proof_result.BBar.multiply(proof_result.r2Hat).add(
         proof_result.ABar.multiply(proof_result.r3Hat));
       for (let k = 0; k < U; k++) {
          C = C.add(generators.H[j[k]-1].multiply(proof_result.mHat[k]));
       }
-      C = C.add(D.multiply(new bls.Fr(proof_result.c).negate().value));
+      C = C.add(D.multiply(proof_result.c));
 
       
       const iZeroBased = i.map(v => v-1); // TODO: spec's fixtures assume these are 0-based; double-check that
@@ -412,9 +412,9 @@ export class BBS {
     
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-octetstoproof
   octets_to_proof(proof_octets: Uint8Array): BBSProof {
-    const proof_len_floor = 3 * this.cs.octet_point_length + 4 * this.cs.octet_scalar_length;
+    const proof_len_floor = 2 * this.cs.octet_point_length + 4 * this.cs.octet_scalar_length;
     if (proof_octets.length < proof_len_floor) {
-      throw "invalid proof";
+      throw "invalid proof (length)";
     }
 
     let index = 0;
