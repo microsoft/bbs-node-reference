@@ -17,16 +17,15 @@ export interface BBSSignature {
 }
 
 export interface Generators {
-  Q2: bls.PointG1,
+  Q1: bls.PointG1,
   H: bls.PointG1[]
 }
 
 export interface BBSProof {
-  APrime: bls.PointG1,
   ABar: bls.PointG1,
-  D: bls.PointG1,
+  BBar: bls.PointG1,
   c: bigint,
-  eHat: bigint,
+  r2Hat: bigint,
   r3Hat: bigint,
   mHat: bigint[]
 }
@@ -96,9 +95,9 @@ export class BBS {
     const e = this.hash_to_scalar(e_expand);
     utils.log("e", e);
     
-    // B = P1 + Q_2 * domain + H_1 * msg_1 + ... + H_L * msg_L
+    // B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
     let B = this.cs.P1;
-    B = B.add(generators.Q2.multiply(domain));
+    B = B.add(generators.Q1.multiply(domain));
     for (let i = 0; i < L; i++) {
       B = B.add(generators.H[i].multiply(messages[i]));
     }
@@ -124,9 +123,9 @@ export class BBS {
     const domain = this.calculate_domain(PK, generators, header);
     utils.log("domain", domain);
 
-    // B = P1 + Q2 * domain + H_1 * msg_1 + ... + H_L * msg_L
+    // B = P1 + Q1 * domain + H_1 * msg_1 + ... + H_L * msg_L
     let B = this.cs.P1;
-    B = B.add(generators.Q2.multiply(domain));
+    B = B.add(generators.Q1.multiply(domain));
     for (let i = 0; i < L; i++) {
       B = B.add(generators.H[i].multiply(messages[i]));
     }
@@ -165,45 +164,45 @@ export class BBS {
     let index = 0;
     const r1 = scalars[index++];
     utils.log("r1: " + r1);
-    const eTilda = scalars[index++];
-    utils.log("eTilda: " + eTilda);
-    const r3Tilda = scalars[index++];
-    utils.log("r3Tilda: " + r3Tilda);
+    const r2 = scalars[index++];
+    utils.log("r2: " + r2);
+    const r3 = scalars[index++];
+    utils.log("r3: " + r3);
     const mTilda = new Array(U).fill(0n).map((v, i, a) => scalars[index + i]);
     utils.log("mTilda: " + mTilda);
 
-    // B = P1 + Q_2 * domain + H_1 * msg_1 + ... + H_L * msg_L
+    // B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
     let B = this.cs.P1;
-    B = B.add(generators.Q2.multiply(domain));
+    B = B.add(generators.Q1.multiply(domain));
     for (let k = 0; k < L; k++) {
       B = B.add(generators.H[k].multiply(messages[k]));
     }
     utils.log("B: " + B);
 
-    const r3 = new bls.Fr(r1).invert().value; // r3 = r1 ^ -1 mod r
-    const APrime = signature_result.A.multiply(r1); // A' = A * r1
-    const ABar = APrime.multiply(new bls.Fr(signature_result.e).negate().value).add(B.multiply(r1)); // Abar = A' * (-e) + B * r1
-    const D = B.multiply(r1); // D = B * r1
-    const C1 = APrime.multiply(eTilda);// C1 = A' * e~
-    utils.log(`C1: ${C1}`);
-    // C2 = D * (-r3~) + H_j1 * m~_1 + ... + H_jU * m~_U
-    let C2 = D.multiply(new bls.Fr(r3Tilda).negate().value);
+    const ABar = signature_result.A.multiply(r1); // Abar = A * r1
+    const BBar = B.subtract((signature_result.A.multiply(signature_result.e))).multiply(r1); // Bbar = (B - A * e) * r1
+    //const BBar = B.multiply(r1).subtract(ABar.multiply(signature_result.e)); // Bbar = B * r1 - Abar * e
+
+    // U = Bbar * r2 + Abar * r3 + H_j1 * m~_j1 + ... + H_jU * m~_jU;
+    let C = BBar.multiply(r2).add(ABar.multiply(r3));
     for (let k = 0; k < U; k++) {
-      C2 = C2.add(generators.H[j[k]-1].multiply(mTilda[k]));
-    }
-    utils.log("C2: " + C2);
-    //  c_array = (A', Abar, D, C1, C2, R, i1, ..., iR, msg_i1, ..., msg_iR, domain, ph)
-    const disclosedMsg = utils.filterDisclosedMessages(messages, disclosed_indexes);
-    const iZeroBased = i.map(v => v-1); // TODO: spec's fixtures assume these are 0-based; double-check that
-    const c = this.calculate_challenge(APrime, ABar, D, C1, C2, iZeroBased, disclosedMsg, domain, ph);
-    const eHat = modR(eTilda + modR(c * signature_result.e)); // e^ = c * e + e~ mod r 
-    const r3Hat = modR(r3Tilda + modR(c * r3)); // r3^ = c * r3 + r3~ mod r
-    const mHat: bigint[] = [];
-    for (let k = 0; k < U; k++) {
-      mHat[k] = modR(mTilda[k] + modR(c * messages[j[k]-1])); // m^_j = c * msg_j + m~_j mod r
+      C = C.add(generators.H[j[k]-1].multiply(mTilda[k]));
     }
 
-    const proof = { APrime: APrime, ABar: ABar, D: D, c: c, eHat: eHat, r3Hat: r3Hat, mHat: mHat }    
+    // c = calculate_challenge(Abar, Bbar, C, (i1, ..., iR), (m_i1, ..., m_iR), domain, ph)    
+    const disclosedMsg = utils.filterDisclosedMessages(messages, disclosed_indexes);
+    const iZeroBased = i.map(v => v-1); // TODO: spec's fixtures assume these are 0-based; double-check that
+    const c = this.calculate_challenge(ABar, BBar, C, iZeroBased, disclosedMsg, domain, ph);
+
+    const r4 = new bls.Fr(r1).invert().value; // r4 = r1^-1 (mod r)
+    const r2Hat = modR(r2 + modR(r4 * c)); // r2^ = r2 + r4 * c (mod r)
+    const r3Hat = modR(r3 + modR(signature_result.e * r4 * c)); // r3^ = r3 + e * r4 * c (mod r)
+    const mHat: bigint[] = [];
+    for (let k = 0; k < U; k++) {
+      mHat[k] = modR(mTilda[k] - modR(c * messages[j[k]-1])); // m^_j = m~_j - m_j * c (mod r)
+    }
+
+    const proof = { ABar: ABar, BBar: BBar, c: c, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat }
     return this.proof_to_octets(proof);
   }
 
@@ -231,30 +230,29 @@ export class BBS {
       if (extGenerators.H.length < L) throw new Error("Not enough generators provided");
       const generators: Generators = {
         H: extGenerators.H.slice(0, L),
-        Q2: extGenerators.Q2,
+        Q1: extGenerators.Q1,
       }
       const domain = this.calculate_domain(PK, generators, header);
       utils.log("domain: " + domain);
 
-      // C1 = (Abar - D) * c + A' * e^
-      const C1 = proof_result.ABar.subtract(proof_result.D).multiply(proof_result.c)
-        .add(proof_result.APrime.multiply(proof_result.eHat))
-        utils.log(`C1: ${C1}`);
-      // T = P1 + Q2 * domain + H_i1 * msg_i1 + ... H_iR * msg_iR
-      let T = this.cs.P1;
-      T = T.add(generators.Q2.multiply(domain));
+      // D = P1 + Q_1 * domain + H_i1 * m_i1 + ... + H_iR * m_iR
+      let D = this.cs.P1;
+      D = D.add(generators.Q1.multiply(domain));
       for (let k = 0; k < R; k++) {
-        T = T.add(generators.H[i[k]-1].multiply(disclosed_messages[k]));
+        D = D.add(generators.H[i[k]-1].multiply(disclosed_messages[k]));
       }
-      // C2 = T * c - D * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU
-      let C2 = T.multiply(proof_result.c)
-                .subtract(proof_result.D.multiply(proof_result.r3Hat))
+
+      // C = Bbar * r2^ + Abar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D(-c)
+      let C = proof_result.BBar.multiply(proof_result.r2Hat).add(
+        proof_result.ABar.multiply(proof_result.r3Hat));
       for (let k = 0; k < U; k++) {
-        C2 = C2.add(generators.H[j[k]-1].multiply(proof_result.mHat[k]));
+         C = C.add(generators.H[j[k]-1].multiply(proof_result.mHat[k]));
       }
-      utils.log("C2: " + C2);
+      C = C.add(D.multiply(new bls.Fr(proof_result.c).negate().value));
+
+      
       const iZeroBased = i.map(v => v-1); // TODO: spec's fixtures assume these are 0-based; double-check that
-      const cv = this.calculate_challenge(proof_result.APrime, proof_result.ABar, proof_result.D, C1, C2, iZeroBased, disclosed_messages, domain, ph);
+      const cv = this.calculate_challenge(proof_result.ABar, proof_result.BBar, C, iZeroBased, disclosed_messages, domain, ph);
       utils.log("cv: " + cv);
 
       if (proof_result.c !== cv) {
@@ -263,14 +261,10 @@ export class BBS {
         throw "Invalid proof (cv)";
       }
 
-      if (proof_result.APrime.equals(bls.PointG1.ZERO)) {
-        throw "Invalid proof (A')";
-      }
-
       // (using the pairing optimization to skip final exponentiation in the pairing
       // and do it after the multiplication)
-      const lh = bls.pairing(proof_result.APrime, W, false);
-      const rh = bls.pairing(proof_result.ABar, bls.PointG2.BASE.negate(), false);
+      const lh = bls.pairing(proof_result.ABar, W, false);
+      const rh = bls.pairing(proof_result.BBar, bls.PointG2.BASE.negate(), false);
       const pairing = lh.multiply(rh).finalExponentiate();
       if (!pairing.equals(bls.Fp12.ONE)) {
         throw "Invalid proof (pairing)"
@@ -292,7 +286,7 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-generator-point-computation
   async create_generators(length: number): Promise<Generators> {
-      const count = length + 1; // Q2, and generators
+      const count = length + 1; // Q1, and generators
       const seed_dst = Buffer.from(this.cs.Ciphersuite_ID + 'SIG_GENERATOR_SEED_', 'utf-8');
       let v = this.cs.expand_message(this.cs.generator_seed, seed_dst, this.cs.seed_len);
       let n = 1;
@@ -310,7 +304,7 @@ export class BBS {
           utils.log("candidate " + i + ": " + utils.bytesToHex(this.cs.point_to_octets_g1(candidate)));
       }
       return {
-        Q2: generators[0],
+        Q1: generators[0],
         H: generators.slice(1)
       };
   }
@@ -342,7 +336,7 @@ export class BBS {
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-domain-calculation
   calculate_domain(PK: Uint8Array, generators: Generators, header: Uint8Array): bigint {
     const dom_octs = utils.concatBytes(
-      this.serialize([generators.H.length, generators.Q2, ...generators.H]),
+      this.serialize([generators.H.length, generators.Q1, ...generators.H]),
       Buffer.from(this.cs.Ciphersuite_ID, 'utf8'));
     const dom_input = utils.concatBytes(PK, dom_octs, utils.i2osp(header.length, 8), header);
     utils.log("dom_input: " + (dom_input));
@@ -351,9 +345,9 @@ export class BBS {
   }
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-challenge-calculation
-  calculate_challenge(APrime: bls.PointG1, ABar: bls.PointG1, D: bls.PointG1, C1: bls.PointG1, C2: bls.PointG1, i_array: number[], msg_array: bigint[], domain: bigint, ph: Uint8Array): bigint {
+  calculate_challenge(ABar: bls.PointG1, BBar: bls.PointG1, C: bls.PointG1, i_array: number[], msg_array: bigint[], domain: bigint, ph: Uint8Array): bigint {
     const c_input = utils.concatBytes(
-      this.serialize([APrime, ABar, D, C1, C2, i_array.length, ...i_array, ...msg_array, domain]),
+      this.serialize([ABar, BBar, C, i_array.length, ...i_array, ...msg_array, domain]),
       utils.i2osp(ph.length, 8),
       ph);
     const challenge = this.hash_to_scalar(c_input);
@@ -402,11 +396,10 @@ export class BBS {
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-prooftooctets
   proof_to_octets(proof: BBSProof): Uint8Array  {
     let proof_octets_elements: Uint8Array[] = [
-      this.cs.point_to_octets_g1(proof.APrime),
       this.cs.point_to_octets_g1(proof.ABar),
-      this.cs.point_to_octets_g1(proof.D),
+      this.cs.point_to_octets_g1(proof.BBar),
       utils.i2osp(proof.c, this.cs.octet_scalar_length),
-      utils.i2osp(proof.eHat, this.cs.octet_scalar_length),
+      utils.i2osp(proof.r2Hat, this.cs.octet_scalar_length),
       utils.i2osp(proof.r3Hat, this.cs.octet_scalar_length)
     ]
     proof.mHat.forEach(msg => 
@@ -425,19 +418,17 @@ export class BBS {
     }
 
     let index = 0;
-    const APrime = this.cs.octets_to_point_g1(proof_octets.slice(index, index + this.cs.octet_point_length));
-    index += this.cs.octet_point_length;
     const ABar = this.cs.octets_to_point_g1(proof_octets.slice(index, index + this.cs.octet_point_length));
     index += this.cs.octet_point_length;
-    const D = this.cs.octets_to_point_g1(proof_octets.slice(index, index + this.cs.octet_point_length));
+    const BBar = this.cs.octets_to_point_g1(proof_octets.slice(index, index + this.cs.octet_point_length));
     index += this.cs.octet_point_length;
 
     const c = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length));
     checkNonZeroFr(c, "invalid proof (c)");
     index += this.cs.octet_scalar_length;
-    const eHat = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length));
+    const r2Hat = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length));
     index += this.cs.octet_scalar_length;
-    checkNonZeroFr(eHat, "invalid proof (eHat)");
+    checkNonZeroFr(r2Hat, "invalid proof (r2Hat)");
     const r3Hat = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length));
     index += this.cs.octet_scalar_length;
     checkNonZeroFr(r3Hat, "invalid proof (r3Hat)");
@@ -450,7 +441,7 @@ export class BBS {
       mHat.push(msg);
     }
 
-    return {APrime: APrime, ABar: ABar, D: D, c: c, eHat: eHat, r3Hat: r3Hat, mHat: mHat}
+    return {ABar: ABar, BBar: BBar, c: c, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat}
   }
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html.html#name-octetstopublickey
