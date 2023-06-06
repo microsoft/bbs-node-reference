@@ -180,8 +180,7 @@ export class BBS {
     utils.log("B: " + B);
 
     const ABar = signature_result.A.multiply(r1); // Abar = A * r1
-    const BBar = B.subtract((signature_result.A.multiply(signature_result.e))).multiply(r1); // Bbar = (B - A * e) * r1
-    //const BBar = B.multiply(r1).subtract(ABar.multiply(signature_result.e)); // Bbar = B * r1 - Abar * e
+    const BBar = B.multiply(r1).subtract(ABar.multiply(signature_result.e)); // Bbar = B * r1 - Abar * e
 
     // U = Bbar * r2 + Abar * r3 + H_j1 * m~_j1 + ... + H_jU * m~_jU;
     let C = BBar.multiply(r2).add(ABar.multiply(r3));
