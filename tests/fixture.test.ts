@@ -95,7 +95,6 @@ for (let i=0; i<signatures.length; i++) {
         const msg = signatures[i].messages.map(v => bbs.MapMessageToScalarAsHash(hexToBytes(v)));
         const generators = {
             Q1: bbs.cs.octets_to_point_g1(hexToBytes(generatorFixture.Q1)),
-            Q2: bbs.cs.octets_to_point_g1(hexToBytes(generatorFixture.Q2)),
             H: HGenerators.slice(0,signatures[i].messages.length)
         }
         if (signatures[i].result.valid) {
@@ -104,7 +103,6 @@ for (let i=0; i<signatures.length; i++) {
 
             const actualGenerators = await bbs.create_generators(10);
             if (!generators.Q1.equals(actualGenerators.Q1)) { throw `invalid Q1 generator; expected: ${generators.Q1}, actual: ${actualGenerators.Q1}`; }
-            if (!generators.Q2.equals(actualGenerators.Q2)) { throw `invalid Q2 generator; expected: ${generators.Q2}, actual: ${actualGenerators.Q2}`; }
             generators.H.forEach((H, idx, a) => {
                 if (!H.equals(actualGenerators.H[idx])) { throw `invalid H${idx} generator for signature ${i}; expected: ${H}, actual: ${actualGenerators.H[idx]}`; }
             })
@@ -131,7 +129,6 @@ for (let i=0; i<signatures.length; i++) {
 
 const generators = {
     Q1: bbs.cs.octets_to_point_g1(hexToBytes(generatorFixture.Q1)),
-    Q2: bbs.cs.octets_to_point_g1(hexToBytes(generatorFixture.Q2)),
     H: HGenerators
 }
 for (let i=0; i<proofs.length; i++) {
