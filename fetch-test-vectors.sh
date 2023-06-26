@@ -33,6 +33,13 @@ echo fetching $url
 cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
 $cmd
 
+# fetch keypair.json
+file=$(printf "%s%s" "keypair" ".json")
+url=$(printf "%s%s" $urlPrefix $file)
+echo fetching $url
+cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
+$cmd
+
 # fetch mockedRng.json
 file=$(printf "%s%s" "mockedRng" ".json")
 url=$(printf "%s%s" $urlPrefix $file)
