@@ -15,7 +15,7 @@ export function os2ip(bytes: Uint8Array): bigint {
 // Integer to Octet Stream
 export function i2osp(value: number | bigint, length: number): Uint8Array {
   // FIXME: same as toRawBytes?
-  if (value < 0  || value >= 256n**BigInt(length) /*1 << (8 * length) FIXME: throws with length == 4! */) { // TODO: FIXME: make constant for our constant sizes
+  if (value < 0 || value >= 256n ** BigInt(length) /*1 << (8 * length) FIXME: throws with length == 4! */) { // TODO: FIXME: make constant for our constant sizes
     throw new Error(`bad I2OSP call: value=${value} length=${length}`);
   }
   const res = Array.from({ length }).fill(0) as number[];
@@ -28,7 +28,7 @@ export function i2osp(value: number | bigint, length: number): Uint8Array {
       value = value / 256n;
     }
   }
-  
+
   return new Uint8Array(res);
 }
 
@@ -95,9 +95,9 @@ export function bytesToHex(uint8a: Uint8Array): string {
 }
 
 export function filterDisclosedMessages(msg: bigint[], disclosed_indexes: number[]): bigint[] {
-  return msg.filter((v, i, a) => {return disclosed_indexes.includes(i+1)});
+  return msg.filter((v, i, a) => { return disclosed_indexes.includes(i + 1) });
 }
 
-export function log(...s: any) : void {
-//  console.log(...s);  // uncomment to print out debug statements
+export function log(...s: any): void {
+  //  console.log(...s);  // uncomment to print out debug statements
 }

@@ -7,9 +7,9 @@ import { HashXOF } from '@noble/hashes/utils';
 import { BLS12_381_SHA256_Ciphersuite, Ciphersuite } from './ciphersuite';
 import { concatBytes, i2osp } from './utils';
 
-export type HashInput = PointG1 | PointG2 | string | number | bigint | Uint8Array;
+export type SerializeInput = PointG1 | PointG2 | string | number | bigint | Uint8Array;
 
-export function HashInputToBytes(data: HashInput, cs: Ciphersuite = BLS12_381_SHA256_Ciphersuite): Uint8Array {
+export function SerializeInputToBytes(data: SerializeInput, cs: Ciphersuite = BLS12_381_SHA256_Ciphersuite): Uint8Array {
 
   if (typeof data === 'string') {
     return Buffer.from(data, 'utf-8');
@@ -33,8 +33,8 @@ export class Hash {
   constructor() {
   }
 
-  update(data: HashInput): void {
-    const bytes = HashInputToBytes(data);
+  update(data: SerializeInput): void {
+    const bytes = SerializeInputToBytes(data);
     const length = bytes.length;
     this.hash.update(i2osp(length, 4));
     this.hash.update(bytes);
