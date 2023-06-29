@@ -62,14 +62,6 @@ export class G2Point extends Point<Fp2, G2Point> {
         // always checks the subgroup membership
         return new G2Point(bls.G2.ProjectivePoint.fromHex(bytes)); // fromHex takes bytes...
     }
-    static subgroup_check(a: G2Point): boolean {
-        try {
-            a.point.assertValidity();
-            return true; // valid point
-        } catch (e) {
-            return false; // invalid point
-        }
-    }
 }
 
 // checks that e(pointG1_1, pointG2_1) * e(pointG1_2, pointG2_2) = GT_Identity
@@ -94,9 +86,6 @@ export class FrScalar {
     }
     static Zero = new FrScalar(0n);
 
-    toBytes(): Uint8Array {
-        return FrScalar.blsFr.toBytes(this.scalar);
-    }
     mul(s: FrScalar): FrScalar {
         return new FrScalar(FrScalar.blsFr.mul(this.scalar, s.scalar));
     }
