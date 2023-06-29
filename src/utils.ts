@@ -1,15 +1,15 @@
 // NOTE: some functions copied from noble-bls12-381's index.ts (TODO: cleaner import or re-impl)
 
-import { PointG1, PointG2 } from "@noble/bls12-381";
+import { FrScalar } from "./math";
 
 // Octet Stream to Integer
-export function os2ip(bytes: Uint8Array): bigint {
+export function os2ip(bytes: Uint8Array, nonZero: boolean = false): FrScalar {
   let result = 0n;
   for (let i = 0; i < bytes.length; i++) {
     result <<= 8n;
     result += BigInt(bytes[i]);
   }
-  return result;
+  return FrScalar.create(result, nonZero);
 }
 
 // Integer to Octet Stream
@@ -52,10 +52,6 @@ export function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
   return arr;
 }
 
-export function toRawBytes(P: PointG1 | PointG2, isCompressed = false) {
-  return hexToBytes(P.toHex(isCompressed));
-}
-
 export function hexToBytes(hex: string): Uint8Array {
   if (typeof hex !== 'string') {
     throw new TypeError('hexToBytes: expected string, got ' + typeof hex);
@@ -79,11 +75,6 @@ export function numberTo32BytesBE(num: bigint) {
   return hexToBytes(hex);
 }
 
-export function bytesToNumberBE(uint8a: Uint8Array): bigint {
-  if (!(uint8a instanceof Uint8Array)) throw new Error('Expected Uint8Array');
-  return BigInt('0x' + bytesToHex(Uint8Array.from(uint8a)));
-}
-
 const hexes = Array.from({ length: 256 }, (v, i) => i.toString(16).padStart(2, '0'));
 export function bytesToHex(uint8a: Uint8Array): string {
   // pre-caching chars could speed this up 6x.
@@ -94,10 +85,10 @@ export function bytesToHex(uint8a: Uint8Array): string {
   return hex;
 }
 
-export function filterDisclosedMessages(msg: bigint[], disclosed_indexes: number[]): bigint[] {
+export function filterDisclosedMessages(msg: FrScalar[], disclosed_indexes: number[]): FrScalar[] {
   return msg.filter((v, i, a) => { return disclosed_indexes.includes(i + 1) });
 }
 
 export function log(...s: any): void {
-  //  console.log(...s);  // uncomment to print out debug statements
+  // console.log(...s);  // uncomment to print out debug statements
 }
