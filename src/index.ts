@@ -4,6 +4,7 @@
 import { BBS } from './bbs';
 import * as crypto from 'crypto';
 import * as utils from './utils';
+import { G1Point } from './math';
 
 void (async () => {
     try {

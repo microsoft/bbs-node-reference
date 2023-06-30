@@ -4,14 +4,15 @@
 // test fixtures
 
 import * as fs from 'fs';
-import { BBS, modR } from '../src/bbs';
+import { BBS } from '../src/bbs';
 import { os2ip } from '../src/utils';
-import { bytesToHex, bytesToNumberBE, hexToBytes } from '../src/utils';
+import { bytesToHex, hexToBytes } from '../src/utils';
 import generatorFixture from '../fixtures/bls12-381-sha-256/generators.json';
 import h2s from '../fixtures/bls12-381-sha-256/h2s.json';
 import keypair from '../fixtures/bls12-381-sha-256/keypair.json';
 import mmtsah from '../fixtures/bls12-381-sha-256/MapMessageToScalarAsHash.json';
 import mockedRng from '../fixtures/bls12-381-sha-256/mockedRng.json';
+import { FrScalar, G1Point } from '../src/math';
 
 interface Signature {
     caseName: string;
@@ -50,46 +51,50 @@ const proofs = proofFiles.filter(f => f.endsWith('.json')).map(f => require(`../
 const bbs = new BBS();
 
 // common generators
-const HGenerators = generatorFixture.MsgGenerators.map(v => bbs.cs.octets_to_point_g1(hexToBytes(v)));
+const HGenerators = generatorFixture.MsgGenerators.map(v => G1Point.fromOctets(hexToBytes(v)));
 const generators = {
-    Q1: bbs.cs.octets_to_point_g1(hexToBytes(generatorFixture.Q1)),
+    Q1: G1Point.fromOctets(hexToBytes(generatorFixture.Q1)),
     H: HGenerators
 }
 
 // mock random number generator (for proof generation)
 const MOCK_RNG_SEED = mockedRng.seed;
-const seeded_random_scalars = (SEED: Uint8Array, count: number): bigint[] => {
-    const dst = Buffer.from(bbs.cs.Ciphersuite_ID + "MOCK_RANDOM_SCALARS_DST_", "utf8");
+const seeded_random_scalars = (SEED: Uint8Array, count: number): FrScalar[] => {
+    const dst = Buffer.from(bbs.cs.ciphersuite_id + "MOCK_RANDOM_SCALARS_DST_", "utf8");
     const out_len = bbs.cs.expand_len * count;
     const v = bbs.cs.expand_message(SEED, dst, out_len);
-    const r: bigint[] = [];
+    const r: FrScalar[] = [];
     for (let i = 0; i < count; i++) {
         const start_idx = i * bbs.cs.expand_len;
         const end_idx = (i + 1) * bbs.cs.expand_len;
-        r.push(modR(os2ip(v.slice(start_idx, end_idx))));
+        r.push(os2ip(v.slice(start_idx, end_idx)));
     }
     return r;
 }
 
 test("mocked_calculate_random_scalars", async () => {
-    const expected = mockedRng.mockedScalars.map(v => BigInt('0x' + v));
+    const expected = mockedRng.mockedScalars.map(v => FrScalar.create(BigInt('0x' + v)));
     const actual = seeded_random_scalars(hexToBytes(MOCK_RNG_SEED), expected.length);
-    expect(actual).toEqual(expected);
+    expect(expected.length).toBe(actual.length);
+    for (let i = 0; i < expected.length; i++) {
+        expect(expected[i].equals(actual[i])).toBe(true);
+    };
 });
 
 test("hash_to_scalar", async () => {
     const dst = hexToBytes(h2s.dst);
     const scalar = bbs.hash_to_scalar(hexToBytes(h2s.message), dst);
-    const expected = BigInt('0x' + h2s.scalar);
-    expect(scalar).toBe(expected);
+    const expected = FrScalar.create(BigInt('0x' + h2s.scalar));
+    expect(scalar.equals(expected)).toBe(true);
 });
 
 test("MapMessageToScalarAsHash", async () => {
     const dst = hexToBytes(mmtsah.dst);
     for (let i = 0; i < mmtsah.cases.length; i++) {
         const scalar = bbs.MapMessageToScalarAsHash(hexToBytes(mmtsah.cases[i].message), dst);
-        const expected = BigInt('0x' + mmtsah.cases[i].scalar);
-        expect(scalar).toBe(expected);
+        const expected = FrScalar.create(BigInt('0x' + mmtsah.cases[i].scalar));
+        expect(scalar.equals(expected)).toBe(true);
+
     }
 });
 
@@ -100,15 +105,16 @@ test("create_generators", async () => {
         if (!H.equals(actualGenerators.H[idx])) { throw `invalid H${idx} generator; expected: ${H}, actual: ${actualGenerators.H[idx]}`; }
     })
     // check base point
-    const BP = bbs.cs.octets_to_point_g1(hexToBytes(generatorFixture.BP));
+    const BP = G1Point.fromOctets(hexToBytes(generatorFixture.BP));
     if (!BP.equals(bbs.cs.P1)) { throw `invalid base point; expected: ${BP}, actual: ${bbs.cs.P1}`; }
 });
 
 test("keypair", async () => {
     const SK = bbs.KeyGen(hexToBytes(keypair.keyMaterial), hexToBytes(keypair.keyInfo));
-    expect(SK).toEqual(bytesToNumberBE(hexToBytes(keypair.keyPair.secretKey)));
+    const expected = FrScalar.create(BigInt('0x' + keypair.keyPair.secretKey));
+    expect(SK.equals(expected)).toBe(true);
     const PK = bbs.SkToPk(SK);
-    const pkOctets = bbs.cs.point_to_octets_g2(PK);
+    const pkOctets = PK.toOctets();
     const expectedPK = hexToBytes(keypair.keyPair.publicKey);
     expect(pkOctets).toEqual(expectedPK);
 });
@@ -120,17 +126,16 @@ for (let i = 0; i < signatures.length; i++) {
         const header = hexToBytes(signatures[i].header);
         const msg = signatures[i].messages.map(v => bbs.MapMessageToScalarAsHash(hexToBytes(v)));
         const generators = {
-            Q1: bbs.cs.octets_to_point_g1(hexToBytes(generatorFixture.Q1)),
+            Q1: G1Point.fromOctets(hexToBytes(generatorFixture.Q1)),
             H: HGenerators.slice(0, signatures[i].messages.length)
         }
         if (signatures[i].result.valid) {
             // recreate the signature
-            const SK = bytesToNumberBE(hexToBytes(signatures[i].signerKeyPair.secretKey));
+            const SK = FrScalar.create(BigInt('0x' + signatures[i].signerKeyPair.secretKey));
             const signature = bbs.Sign(SK, PK, header, msg, generators);
             const actualSignature = bytesToHex(signature);
             if (actualSignature != signatures[i].signature) {
-                console.log(`invalid signature ${i}; expected: ${signatures[i].signature}, actual: ${actualSignature}`);
-                // throw `invalid signature ${i}; expected: ${signatures[i].signature}, actual: ${actualSignature}`; // FIXME
+                throw `invalid signature ${i}; expected: ${signatures[i].signature}, actual: ${actualSignature}`;
             }
 
             bbs.Verify(PK, hexToBytes(signatures[i].signature), header, msg, generators);
