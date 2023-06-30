@@ -3,8 +3,10 @@
 
 // implement the math using the bls library
 
+import { doWhileStatement } from '@babel/types';
 import { ProjPointType } from '@noble/curves/abstract/weierstrass';
 import { bls12_381 as bls } from '@noble/curves/bls12-381';
+import { shake256 } from '@noble/hashes/sha3';
 
 // unexported types from bls
 type Fp = bigint;
@@ -45,7 +47,14 @@ export class G1Point extends Point<Fp, G1Point> {
         return new G1Point(bls.G1.ProjectivePoint.fromHex(bytes)); // fromHex takes bytes...
     }
     static async hashToCurve(msg: Uint8Array, dst: string): Promise<G1Point> {
-        const candidate = await bls.G1.hashToCurve(msg, { DST: dst });
+        let options;
+        if (dst.includes('SHAKE')) {
+            // TODO: this is unclear in the spec, but matches the fixtures
+            options = {  DST: dst, expand: 'xof', hash: shake256 } as any;
+        } else {
+            options = { DST: dst };
+        }
+        const candidate = await bls.G1.hashToCurve(msg, options);
         return new G1Point(candidate as ProjPointType<bigint>);
     }
 }

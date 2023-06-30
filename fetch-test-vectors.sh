@@ -2,68 +2,44 @@
 
 FILE=fixtures
 if [ -d "$FILE" ]; then
-    echo "$FILE directory already fetched; delete to refetch."
-    exit
+   echo "$FILE directory already fetched; delete to refetch."
+   exit
 fi
 
-urlPrefix=https://raw.githubusercontent.com/decentralized-identity/bbs-signature/main/tooling/fixtures/fixture_data/bls12-381-sha-256/
 mkdir -p fixtures
-mkdir -p fixtures/bls12-381-sha-256
-mkdir -p fixtures/bls12-381-sha-256/signature
-mkdir -p fixtures/bls12-381-sha-256/proof
 
-# fetch generators.json
-file=$(printf "%s%s" "generators" ".json")
-url=$(printf "%s%s" $urlPrefix $file)
-echo fetching $url
-cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-$cmd
+urlPrefix="https://raw.githubusercontent.com/decentralized-identity/bbs-signature/main/tooling/fixtures/fixture_data/"
 
-# fetch MapMessageToScalarAsHash.json
-file=$(printf "%s%s" "MapMessageToScalarAsHash" ".json")
-url=$(printf "%s%s" $urlPrefix $file)
-echo fetching $url
-cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-$cmd
+fetch_file() {
+   local suite=$1
+   local file=$2
+   local url="$urlPrefix/$suite/$file"
+   echo "Fetching $url"
+   wget -q -O "fixtures/$suite/$file" "$url"
+}
+suites=("bls12-381-sha-256" "bls12-381-shake-256")
+for suite in "${suites[@]}"; do
+   echo "Fetching $suite fixtures"
+   mkdir -p fixtures/$suite
+   files=(
+      "generators.json"
+      "MapMessageToScalarAsHash.json"
+      "h2s.json"
+      "keypair.json"
+      "mockedRng.json"
+   )
 
-# fetch h2s.json
-file=$(printf "%s%s" "h2s" ".json")
-url=$(printf "%s%s" $urlPrefix $file)
-echo fetching $url
-cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-$cmd
+   for file in "${files[@]}"; do
+      fetch_file "$suite" "$file"
+   done
 
-# fetch keypair.json
-file=$(printf "%s%s" "keypair" ".json")
-url=$(printf "%s%s" $urlPrefix $file)
-echo fetching $url
-cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-$cmd
+   for ((i = 1; i <= 9; i++)); do
+      mkdir -p fixtures/$suite/signature
+      fetch_file "$suite" "signature/signature$(printf "%.3d" "$i").json"
+   done
 
-# fetch mockedRng.json
-file=$(printf "%s%s" "mockedRng" ".json")
-url=$(printf "%s%s" $urlPrefix $file)
-echo fetching $url
-cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-$cmd
-
-# fetch signatures
-for i in {1..9}
-do
-   file=$(printf "%s%.3d%s" "signature/signature" $i ".json")
-   url=$(printf "%s%s" $urlPrefix $file)
-   echo fetching $url
-   cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-   $cmd
+   for ((i = 1; i <= 13; i++)); do
+      mkdir -p fixtures/$suite/proof
+      fetch_file "$suite" "proof/proof$(printf "%.3d" "$i").json"
+   done
 done
-
-# fetch proofs
-for i in {1..13}
-do
-   file=$(printf "%s%.3d%s" "proof/proof" $i ".json")
-   url=$(printf "%s%s" $urlPrefix $file)
-   echo fetching $url
-   cmd=$(printf "%s%s%s%s%s%s" "wget -q -O " "fixtures/bls12-381-sha-256/" $file " " $url)
-   $cmd
-done
-

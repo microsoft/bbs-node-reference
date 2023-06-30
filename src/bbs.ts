@@ -3,7 +3,7 @@
 
 import * as utils from './utils';
 import { G1Point, G2Point, FrScalar, checkPairingIsIdentity, Point } from './math';
-import { Ciphersuite, BLS12_381_SHA256_Ciphersuite } from './ciphersuite';
+import { Ciphersuite, BLS12_381_SHAKE_256_Ciphersuite } from './ciphersuite';
 import * as crypto from 'crypto';
 import { concat, i2osp } from './utils';
 
@@ -29,28 +29,11 @@ export interface BBSProof {
 }
 
 type SerializeInput = G1Point | G2Point | FrScalar | string | number | Uint8Array;
-function SerializeInputToBytes(data: SerializeInput, cs: Ciphersuite = BLS12_381_SHA256_Ciphersuite): Uint8Array {
-
-  if (typeof data === 'string') {
-    return Buffer.from(data, 'utf-8');
-  } else if (data instanceof Point) {
-    return data.toOctets();
-  } else if (data instanceof FrScalar) {
-    return i2osp(data.scalar, cs.octet_scalar_length);
-  } else if (typeof data === 'number') {
-    return i2osp(data, 8);
-  } else if (data instanceof Uint8Array) {
-    return concat(i2osp(data.length, 8), data);
-  } else {
-    throw "invalid serialize type";
-  }
-}
-
 
 export class BBS {
   cs: Ciphersuite;
 
-  constructor(cs = BLS12_381_SHA256_Ciphersuite) {
+  constructor(cs = BLS12_381_SHAKE_256_Ciphersuite) {
     this.cs = cs;
   }
 
@@ -344,11 +327,29 @@ export class BBS {
   // 4.7 Serialization
   //
 
+  private serializeInputToBytes(data: SerializeInput): Uint8Array {
+
+    if (typeof data === 'string') {
+      return Buffer.from(data, 'utf-8');
+    } else if (data instanceof Point) {
+      return data.toOctets();
+    } else if (data instanceof FrScalar) {
+      return i2osp(data.scalar, this.cs.octet_scalar_length);
+    } else if (typeof data === 'number') {
+      return i2osp(data, 8);
+    } else if (data instanceof Uint8Array) {
+      return concat(i2osp(data.length, 8), data);
+    } else {
+      throw "invalid serialize type";
+    }
+  }
+  
+
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-serialize
   serialize(input_array: SerializeInput[]): Uint8Array {
     let octets_result = new Uint8Array();
     input_array.forEach(v => {
-      octets_result = utils.concat(octets_result, SerializeInputToBytes(v));
+      octets_result = utils.concat(octets_result, this.serializeInputToBytes(v));
     });
     return octets_result;
   }
