@@ -5,7 +5,7 @@ import * as utils from './utils';
 import { G1Point, G2Point, FrScalar, checkPairingIsIdentity, Point } from './math';
 import { Ciphersuite, BLS12_381_SHA256_Ciphersuite } from './ciphersuite';
 import * as crypto from 'crypto';
-import { concatBytes, i2osp } from './utils';
+import { concat, i2osp } from './utils';
 
 // NOTE: we don't check for the max array lengths, because the JavaScript max is 2^53-1, smaller than the spec's 2^64-1
 
@@ -40,7 +40,7 @@ function SerializeInputToBytes(data: SerializeInput, cs: Ciphersuite = BLS12_381
   } else if (typeof data === 'number') {
     return i2osp(data, 8);
   } else if (data instanceof Uint8Array) {
-    return concatBytes(i2osp(data.length, 8), data);
+    return concat(i2osp(data.length, 8), data);
   } else {
     throw "invalid serialize type";
   }
@@ -68,7 +68,7 @@ export class BBS {
     if (key_info.length > 65535) {
       throw "key_material too short, MUST be at least 32 bytes";
     }
-    const derive_input = utils.concatBytes(key_material, utils.i2osp(key_info.length, 2), key_info);
+    const derive_input = utils.concat(key_material, utils.i2osp(key_info.length, 2), key_info);
     const SK = this.hash_to_scalar(derive_input, key_dst);
     return SK;
   }
@@ -281,7 +281,7 @@ export class BBS {
       let cont = true;
       let candidate = G1Point.Identity;
       while (cont) {
-        v = this.cs.expand_message(utils.concatBytes(v, utils.i2osp(n, 4)), seed_dst, this.cs.seed_len);
+        v = this.cs.expand_message(utils.concat(v, utils.i2osp(n, 4)), seed_dst, this.cs.seed_len);
         n += 1;
         candidate = await this.cs.hash_to_curve_g1(v); // generator_dst specified in the hash_to_curve_g1 function directly
         cont = generators.includes(candidate);
@@ -311,7 +311,7 @@ export class BBS {
       if (counter > 255) {
         throw "hash_to_scalar failed, counter > 255";
       }
-      const msg_prime = utils.concatBytes(msg_octets, utils.i2osp(counter, 1));
+      const msg_prime = utils.concat(msg_octets, utils.i2osp(counter, 1));
       const uniform_bytes = this.cs.expand_message(msg_prime, dst, this.cs.expand_len);
       hashed_scalar = utils.os2ip(uniform_bytes);
       counter++;
@@ -321,10 +321,10 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-domain-calculation
   calculate_domain(PK: G2Point, generators: Generators, header: Uint8Array): FrScalar {
-    const dom_octs = utils.concatBytes(
+    const dom_octs = utils.concat(
       this.serialize([PK, generators.H.length, generators.Q1, ...generators.H]),
       Buffer.from(this.cs.ciphersuite_id, 'utf8'));
-    const dom_input = utils.concatBytes(dom_octs, utils.i2osp(header.length, 8), header);
+    const dom_input = utils.concat(dom_octs, utils.i2osp(header.length, 8), header);
     utils.log("dom_input", dom_input);
     const domain = this.hash_to_scalar(dom_input);
     return domain;
@@ -332,7 +332,7 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-challenge-calculation
   calculate_challenge(ABar: G1Point, BBar: G1Point, C: G1Point, i_array: number[], msg_array: FrScalar[], domain: FrScalar, ph: Uint8Array): FrScalar {
-    const c_input = utils.concatBytes(
+    const c_input = utils.concat(
       this.serialize([ABar, BBar, C, i_array.length, ...i_array, ...msg_array, domain]),
       utils.i2osp(ph.length, 8),
       ph);
@@ -348,7 +348,7 @@ export class BBS {
   serialize(input_array: SerializeInput[]): Uint8Array {
     let octets_result = new Uint8Array();
     input_array.forEach(v => {
-      octets_result = utils.concatBytes(octets_result, SerializeInputToBytes(v));
+      octets_result = utils.concat(octets_result, SerializeInputToBytes(v));
     });
     return octets_result;
   }
