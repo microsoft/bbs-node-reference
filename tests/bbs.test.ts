@@ -4,37 +4,41 @@
 import { BBS } from '../src/bbs';
 import * as crypto from 'crypto';
 import * as utils from '../src/utils';
+import { BLS12_381_SHA256_Ciphersuite, BLS12_381_SHAKE_256_Ciphersuite } from '../src/ciphersuite';
 
-test("End-to-end test", async () => {
-    const bbs = new BBS();
+const ciphersuites = [BLS12_381_SHAKE_256_Ciphersuite, BLS12_381_SHA256_Ciphersuite];
 
-    // generate random issuer keys
-    const SK = bbs.KeyGen(crypto.randomBytes(32));
-    const PK = bbs.SkToPk(SK);
+ciphersuites.forEach(cs => {
+    test("End-to-end test: " + cs.ciphersuite_id, async () => {
+        const bbs = new BBS(cs);
 
-    // create the generators
-    const length = 5;
-    const generators = await bbs.create_generators(length);
+        // generate random issuer keys
+        const SK = bbs.KeyGen(crypto.randomBytes(32));
+        const PK = bbs.SkToPk(SK);
 
-    // create random messages
-    let msg = Array(length).fill(null).map(v => bbs.MapMessageToScalarAsHash(crypto.randomBytes(20)));
+        // create the generators
+        const length = 5;
+        const generators = await bbs.create_generators(length);
 
-    // create the signature
-    const header = Buffer.from("HEADER", "utf-8");
-    const signature = bbs.Sign(SK, PK, header, msg, generators);
+        // create random messages
+        let msg = Array(length).fill(null).map(v => bbs.MapMessageToScalarAsHash(crypto.randomBytes(20)));
 
-    // validate the signature
-    bbs.Verify(PK, signature, header, msg, generators);
+        // create the signature
+        const header = Buffer.from("HEADER", "utf-8");
+        const signature = bbs.Sign(SK, PK, header, msg, generators);
 
-    // randomly disclose each message
-    const disclosed_indexes = Array(length).fill(0).map((v, i, a) => i + 1).filter(v => { return Math.random() > 0.5; }); // random coin flip for each message
-    const ph = Buffer.from("PRESENTATION HEADER", "utf-8");
+        // validate the signature
+        bbs.Verify(PK, signature, header, msg, generators);
 
-    const proof = bbs.ProofGen(PK, signature, header, ph, msg, generators, disclosed_indexes);
-    const disclosed_msg = utils.filterDisclosedMessages(msg, disclosed_indexes);
+        // randomly disclose each message
+        const disclosed_indexes = Array(length).fill(0).map((v, i, a) => i + 1).filter(v => { return Math.random() > 0.5; }); // random coin flip for each message
+        const ph = Buffer.from("PRESENTATION HEADER", "utf-8");
 
-    bbs.ProofVerify(PK, proof, header, ph, disclosed_msg, generators, disclosed_indexes);
+        const proof = bbs.ProofGen(PK, signature, header, ph, msg, generators, disclosed_indexes);
+        const disclosed_msg = utils.filterDisclosedMessages(msg, disclosed_indexes);
+
+        bbs.ProofVerify(PK, proof, header, ph, disclosed_msg, generators, disclosed_indexes);
+    });
 });
-
 
 
