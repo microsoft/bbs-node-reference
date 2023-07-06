@@ -11,15 +11,14 @@ export class Ciphersuite {
     hash_to_curve_suite: string;
     P1: G1Point;
     generator_seed: Uint8Array;
-    hash_to_curve_g1 = async (input: Uint8Array) => {
-        return G1Point.hashToCurve(input, this.ciphersuite_id + "SIG_GENERATOR_DST_");
+    hash_to_curve_g1 = async (input: Uint8Array, dst: string) => {
+        return G1Point.hashToCurve(input, dst);
     }
-    seed_len = 48;  // ceil((ceil(log2(r)) + k)/8)
     expand_len = 48; // ceil((ceil(log2(r)) + k)/8)
     expand_message: (message: Uint8Array, dst: Uint8Array, len: number) => Uint8Array;
 
     constructor(cipherSuiteBaseId: string, P1: G1Point, expand_message: (message: Uint8Array, dst: Uint8Array, len: number) => Uint8Array) {
-        this.ciphersuite_id = cipherSuiteBaseId + "H2G_";
+        this.ciphersuite_id = cipherSuiteBaseId + "H2G_HM2S_";
         this.hash_to_curve_suite = cipherSuiteBaseId;
         this.P1 = P1;
         this.generator_seed = Buffer.from(this.ciphersuite_id + "MESSAGE_GENERATOR_SEED", 'utf-8');
@@ -29,12 +28,12 @@ export class Ciphersuite {
 
 export const BLS12_381_SHA256_Ciphersuite = new Ciphersuite(
     "BBS_BLS12381G1_XMD:SHA-256_SSWU_RO_", 
-    G1Point.fromOctets(hexToBytes("864df3ae75a023852b577c6aa46d1608d7bfb73c59c73dfd47250ea01c04ec1ad20560e8e4aca82296ca7c4e1b7c3620")),
+    G1Point.fromOctets(hexToBytes("a8ce256102840821a3e94ea9025e4662b205762f9776b3a766c872b948f1fd225e7c59698588e70d11406d161b4e28c9")),
     expand_message_xmd
 );
 
 export const BLS12_381_SHAKE_256_Ciphersuite = new Ciphersuite(
     "BBS_BLS12381G1_XOF:SHAKE-256_SSWU_RO_",
-    G1Point.fromOctets(hexToBytes("8fbd0548aada70863646feef018a867981b85ab22efb80a314dc96a4efaeaeef2e40f0d40524a0dcf5ae8fe5777d6d93")),
+    G1Point.fromOctets(hexToBytes("8929dfbc7e6642c4ed9cba0856e493f8b9d7d5fcb0c31ef8fdcd34d50648a56c795e106e9eada6e0bda386b414150755")),
     expand_message_xof
 );
