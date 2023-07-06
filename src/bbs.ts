@@ -22,10 +22,10 @@ export interface BBSSignature {
 export interface BBSProof {
   ABar: G1Point,
   BBar: G1Point,
-  c: FrScalar,
   r2Hat: FrScalar,
   r3Hat: FrScalar,
-  mHat: FrScalar[]
+  mHat: FrScalar[],
+  c: FrScalar
 }
 
 type SerializeInput = G1Point | G2Point | FrScalar | string | number | Uint8Array;
@@ -159,8 +159,8 @@ export class BBS {
     const ABar = signature_result.A.mul(r1); // Abar = A * r1
     const BBar = B.mul(r1).add(ABar.mul(signature_result.e).neg()); // Bbar = B * r1 - Abar * e
 
-    // C = Bbar * r2 + Abar * r3 + H_j1 * m~_j1 + ... + H_jU * m~_jU;
-    let C = BBar.mul(r2).add(ABar.mul(r3));
+    // C = Abar * r2 + Bbar * r3 + H_j1 * m~_j1 + ... + H_jU * m~_jU;
+    let C = ABar.mul(r2).add(BBar.mul(r3));
     for (let k = 0; k < U; k++) {
       C = C.add(generators.H[j[k] - 1].mul(mTilda[k]));
     }
@@ -171,14 +171,14 @@ export class BBS {
     const c = this.calculate_challenge(ABar, BBar, C, iZeroBased, disclosedMsg, domain, ph);
 
     const r4 = r1.neg().inv(); // r4 = -r1^-1 (mod r)
-    const r2Hat = r4.mul(c).add(r2); // r2^ = r2 + r4 * c (mod r)
-    const r3Hat = signature_result.e.mul(r4).mul(c).add(r3); // r3^ = r3 + e * r4 * c (mod r)
+    const r2Hat = signature_result.e.mul(r4).mul(c).add(r2); // r2^ = r2 + e * r4 * c (mod r)
+    const r3Hat = r4.mul(c).add(r3); // r3^ = r3 + r4 * c (mod r)
     const mHat: FrScalar[] = [];
     for (let k = 0; k < U; k++) {
       mHat[k] = messages[j[k] - 1].mul(c).add(mTilda[k]); // m^_j = m~_j + m_j * c (mod r)
     }
 
-    const proof = { ABar: ABar, BBar: BBar, c: c, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat }
+    const proof = { ABar: ABar, BBar: BBar, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat, c: c }
     return this.proof_to_octets(proof);
   }
 
@@ -215,9 +215,9 @@ export class BBS {
       D = D.add(generators.H[i[k] - 1].mul(disclosed_messages[k]));
     }
 
-    // C = Bbar * r2^ + Abar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D * c
-    let C = proof_result.BBar.mul(proof_result.r2Hat)
-      .add(proof_result.ABar.mul(proof_result.r3Hat));
+    // C = Abar * r2^ + Bbar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D * c
+    let C = proof_result.ABar.mul(proof_result.r2Hat)
+      .add(proof_result.BBar.mul(proof_result.r3Hat));
     for (let k = 0; k < U; k++) {
       C = C.add(generators.H[j[k] - 1].mul(proof_result.mHat[k]));
     }
@@ -360,7 +360,7 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-proof-to-octets
   proof_to_octets(proof: BBSProof): Uint8Array {
-    const serialized = this.serialize([proof.ABar, proof.BBar, proof.c, proof.r2Hat, proof.r3Hat, ...proof.mHat]);
+    const serialized = this.serialize([proof.ABar, proof.BBar, proof.r2Hat, proof.r3Hat, ...proof.mHat, proof.c]);
     return serialized;
   }
 
@@ -377,21 +377,21 @@ export class BBS {
     const BBar = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
     index += this.cs.octet_point_length;
 
-    const c = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
-    index += this.cs.octet_scalar_length;
     const r2Hat = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
     index += this.cs.octet_scalar_length;
     const r3Hat = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
     index += this.cs.octet_scalar_length;
 
     const mHat: FrScalar[] = [];
-    while (index < proof_octets.length) {
+    const end_index = proof_octets.length - this.cs.octet_scalar_length;
+    while (index < end_index) {
       const msg = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
       index += this.cs.octet_scalar_length;
       mHat.push(msg);
     }
+    const c = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
 
-    return { ABar: ABar, BBar: BBar, c: c, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat }
+    return { ABar: ABar, BBar: BBar, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat, c: c }
   }
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-octets-to-public-key
