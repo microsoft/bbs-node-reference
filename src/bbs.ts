@@ -20,8 +20,8 @@ export interface BBSSignature {
 }
 
 export interface BBSProof {
-  ABar: G1Point,
-  BBar: G1Point,
+  Abar: G1Point,
+  Bbar: G1Point,
   r2Hat: FrScalar,
   r3Hat: FrScalar,
   mHat: FrScalar[],
@@ -156,11 +156,11 @@ export class BBS {
     }
     utils.log("B", B);
 
-    const ABar = signature_result.A.mul(r1); // Abar = A * r1
-    const BBar = B.mul(r1).add(ABar.mul(signature_result.e).neg()); // Bbar = B * r1 - Abar * e
+    const Abar = signature_result.A.mul(r1); // Abar = A * r1
+    const Bbar = B.mul(r1).add(Abar.mul(signature_result.e).neg()); // Bbar = B * r1 - Abar * e
 
     // C = Abar * r2 + Bbar * r3 + H_j1 * m~_j1 + ... + H_jU * m~_jU;
-    let C = ABar.mul(r2).add(BBar.mul(r3));
+    let C = Abar.mul(r2).add(Bbar.mul(r3));
     for (let k = 0; k < U; k++) {
       C = C.add(generators.H[j[k] - 1].mul(mTilda[k]));
     }
@@ -168,7 +168,7 @@ export class BBS {
     // c = calculate_challenge(Abar, Bbar, C, (i1, ..., iR), (m_i1, ..., m_iR), domain, ph)    
     const disclosedMsg = utils.filterDisclosedMessages(messages, disclosed_indexes);
     const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based;
-    const c = this.calculate_challenge(ABar, BBar, C, iZeroBased, disclosedMsg, domain, ph);
+    const c = this.calculate_challenge(Abar, Bbar, C, iZeroBased, disclosedMsg, domain, ph);
 
     const r4 = r1.neg().inv(); // r4 = -r1^-1 (mod r)
     const r2Hat = signature_result.e.mul(r4).mul(c).add(r2); // r2^ = r2 + e * r4 * c (mod r)
@@ -178,7 +178,7 @@ export class BBS {
       mHat[k] = messages[j[k] - 1].mul(c).add(mTilda[k]); // m^_j = m~_j + m_j * c (mod r)
     }
 
-    const proof = { ABar: ABar, BBar: BBar, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat, c: c }
+    const proof = { Abar: Abar, Bbar: Bbar, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat, c: c }
     return this.proof_to_octets(proof);
   }
 
@@ -216,15 +216,15 @@ export class BBS {
     }
 
     // C = Abar * r2^ + Bbar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D * c
-    let C = proof_result.ABar.mul(proof_result.r2Hat)
-      .add(proof_result.BBar.mul(proof_result.r3Hat));
+    let C = proof_result.Abar.mul(proof_result.r2Hat)
+      .add(proof_result.Bbar.mul(proof_result.r3Hat));
     for (let k = 0; k < U; k++) {
       C = C.add(generators.H[j[k] - 1].mul(proof_result.mHat[k]));
     }
     C = C.add(D.mul(proof_result.c));
 
     const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based
-    const cv = this.calculate_challenge(proof_result.ABar, proof_result.BBar, C, iZeroBased, disclosed_messages, domain, ph);
+    const cv = this.calculate_challenge(proof_result.Abar, proof_result.Bbar, C, iZeroBased, disclosed_messages, domain, ph);
     utils.log("cv", cv);
 
     if (!proof_result.c.equals(cv)) {
@@ -233,8 +233,8 @@ export class BBS {
       throw "Invalid proof (cv)";
     }
 
-    if (!checkPairingIsIdentity(proof_result.ABar, PK,
-      proof_result.BBar, G2Point.Base.neg())) {
+    if (!checkPairingIsIdentity(proof_result.Abar, PK,
+      proof_result.Bbar, G2Point.Base.neg())) {
       throw "Invalid proof (pairing)"
     }
   }
@@ -298,10 +298,10 @@ export class BBS {
   }
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-challenge-calculation
-  calculate_challenge(ABar: G1Point, BBar: G1Point, C: G1Point, i_array: number[], msg_array: FrScalar[], domain: FrScalar, ph: Uint8Array): FrScalar {
+  calculate_challenge(Abar: G1Point, Bbar: G1Point, C: G1Point, i_array: number[], msg_array: FrScalar[], domain: FrScalar, ph: Uint8Array): FrScalar {
     const challenge = this.hash_to_scalar(
       utils.concat(
-        this.serialize([ABar, BBar, C, i_array.length, ...i_array, ...msg_array, domain]),
+        this.serialize([Abar, Bbar, C, i_array.length, ...i_array, ...msg_array, domain]),
         utils.i2osp(ph.length, 8),
         ph));
     return challenge;
@@ -360,7 +360,7 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-proof-to-octets
   proof_to_octets(proof: BBSProof): Uint8Array {
-    const serialized = this.serialize([proof.ABar, proof.BBar, proof.r2Hat, proof.r3Hat, ...proof.mHat, proof.c]);
+    const serialized = this.serialize([proof.Abar, proof.Bbar, proof.r2Hat, proof.r3Hat, ...proof.mHat, proof.c]);
     return serialized;
   }
 
@@ -372,9 +372,9 @@ export class BBS {
     }
 
     let index = 0;
-    const ABar = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
+    const Abar = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
     index += this.cs.octet_point_length;
-    const BBar = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
+    const Bbar = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
     index += this.cs.octet_point_length;
 
     const r2Hat = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
@@ -391,7 +391,7 @@ export class BBS {
     }
     const c = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
 
-    return { ABar: ABar, BBar: BBar, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat, c: c }
+    return { Abar: Abar, Bbar: Bbar, r2Hat: r2Hat, r3Hat: r3Hat, mHat: mHat, c: c }
   }
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-octets-to-public-key
