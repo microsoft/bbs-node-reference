@@ -8,9 +8,7 @@ fi
 
 mkdir -p fixtures
 
-urlPrefix="https://raw.githubusercontent.com/decentralized-identity/bbs-signature/vasilis/challenge-index/tooling/fixtures/fixture_data/"
-# TODO: revert back after spec PR 273 is merged
-#urlPrefix="https://raw.githubusercontent.com/decentralized-identity/bbs-signature/main/tooling/fixtures/fixture_data/"
+urlPrefix="https://raw.githubusercontent.com/decentralized-identity/bbs-signature/main/tooling/fixtures/fixture_data/"
 
 fetch_file() {
    local suite=$1
