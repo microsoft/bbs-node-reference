@@ -33,12 +33,12 @@ for suite in "${suites[@]}"; do
       fetch_file "$suite" "$file"
    done
 
-   for ((i = 1; i <= 9; i++)); do
+   for ((i = 1; i <= 10; i++)); do
       mkdir -p fixtures/$suite/signature
       fetch_file "$suite" "signature/signature$(printf "%.3d" "$i").json"
    done
 
-   for ((i = 1; i <= 13; i++)); do
+   for ((i = 1; i <= 15; i++)); do
       mkdir -p fixtures/$suite/proof
       fetch_file "$suite" "proof/proof$(printf "%.3d" "$i").json"
    done
