@@ -257,20 +257,13 @@ export class BBS {
   async create_generators(length: number): Promise<Generators> {
     const count = length + 1; // Q1, and generators
     const seed_dst = Buffer.from(this.cs.ciphersuite_id + 'SIG_GENERATOR_SEED_', 'utf-8');
-    let v = this.cs.expand_message(this.cs.generator_seed, seed_dst, this.cs.seed_len);
-    let n = 1;
+    let v = this.cs.expand_message(this.cs.generator_seed, seed_dst, this.cs.expand_len);
     const generators: G1Point[] = [];
-    for (let i = 0; i < count; i++) {
-      let cont = true;
-      let candidate = G1Point.Identity;
-      while (cont) {
-        v = this.cs.expand_message(utils.concat(v, utils.i2osp(n, 4)), seed_dst, this.cs.seed_len);
-        n += 1;
-        candidate = await this.cs.hash_to_curve_g1(v); // generator_dst specified in the hash_to_curve_g1 function directly
-        cont = generators.includes(candidate);
-      }
-      generators.push(candidate);
-      utils.log("candidate " + i + ": ", utils.bytesToHex(candidate.toOctets()));
+    for (let i = 1; i <= count; i++) {
+      v = this.cs.expand_message(utils.concat(v, utils.i2osp(i, 8)), seed_dst, this.cs.expand_len);
+      const generator = await this.cs.hash_to_curve_g1(v, this.cs.ciphersuite_id + 'SIG_GENERATOR_DST_');
+      generators.push(generator);
+      utils.log("generator " + i + ": ", utils.bytesToHex(generator.toOctets()));
     }
     return {
       Q1: generators[0],
@@ -288,17 +281,8 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-hash-to-scalar
   hash_to_scalar(msg_octets: Uint8Array, dst: Uint8Array = Buffer.from(this.cs.ciphersuite_id + "H2S_", "utf8")): FrScalar {
-    let hashed_scalar: FrScalar = FrScalar.Zero;
-    let counter = 0;
-    while (hashed_scalar.equals(FrScalar.Zero)) {
-      if (counter > 255) {
-        throw "hash_to_scalar failed, counter > 255";
-      }
-      const msg_prime = utils.concat(msg_octets, utils.i2osp(counter, 1));
-      const uniform_bytes = this.cs.expand_message(msg_prime, dst, this.cs.expand_len);
-      hashed_scalar = utils.os2ip(uniform_bytes);
-      counter++;
-    }
+    const uniform_bytes = this.cs.expand_message(msg_octets, dst, this.cs.expand_len);
+    const hashed_scalar = utils.os2ip(uniform_bytes);
     return hashed_scalar;
   }
 
@@ -315,11 +299,11 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-challenge-calculation
   calculate_challenge(ABar: G1Point, BBar: G1Point, C: G1Point, i_array: number[], msg_array: FrScalar[], domain: FrScalar, ph: Uint8Array): FrScalar {
-    const c_input = utils.concat(
-      this.serialize([ABar, BBar, C, i_array.length, ...i_array, ...msg_array, domain]),
-      utils.i2osp(ph.length, 8),
-      ph);
-    const challenge = this.hash_to_scalar(c_input);
+    const challenge = this.hash_to_scalar(
+      utils.concat(
+        this.serialize([ABar, BBar, C, i_array.length, ...i_array, ...msg_array, domain]),
+        utils.i2osp(ph.length, 8),
+        ph));
     return challenge;
   }
 
