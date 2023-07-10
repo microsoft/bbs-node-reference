@@ -159,16 +159,16 @@ export class BBS {
     const Abar = signature_result.A.mul(r1); // Abar = A * r1
     const Bbar = B.mul(r1).add(Abar.mul(signature_result.e).neg()); // Bbar = B * r1 - Abar * e
 
-    // C = Abar * r2 + Bbar * r3 + H_j1 * m~_j1 + ... + H_jU * m~_jU;
-    let C = Abar.mul(r2).add(Bbar.mul(r3));
+    // T = Abar * r2 + Bbar * r3 + H_j1 * m~_j1 + ... + H_jU * m~_jU;
+    let T = Abar.mul(r2).add(Bbar.mul(r3));
     for (let k = 0; k < U; k++) {
-      C = C.add(generators.H[j[k] - 1].mul(mTilda[k]));
+      T = T.add(generators.H[j[k] - 1].mul(mTilda[k]));
     }
 
-    // c = calculate_challenge(Abar, Bbar, C, (i1, ..., iR), (m_i1, ..., m_iR), domain, ph)    
+    // c = calculate_challenge(Abar, Bbar, T, (i1, ..., iR), (m_i1, ..., m_iR), domain, ph)    
     const disclosedMsg = utils.filterDisclosedMessages(messages, disclosed_indexes);
     const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based;
-    const c = this.calculate_challenge(Abar, Bbar, C, iZeroBased, disclosedMsg, domain, ph);
+    const c = this.calculate_challenge(Abar, Bbar, T, iZeroBased, disclosedMsg, domain, ph);
 
     const r4 = r1.neg().inv(); // r4 = -r1^-1 (mod r)
     const r2Hat = signature_result.e.mul(r4).mul(c).add(r2); // r2^ = r2 + e * r4 * c (mod r)
@@ -215,16 +215,16 @@ export class BBS {
       D = D.add(generators.H[i[k] - 1].mul(disclosed_messages[k]));
     }
 
-    // C = Abar * r2^ + Bbar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D * c
-    let C = proof_result.Abar.mul(proof_result.r2Hat)
+    // T = Abar * r2^ + Bbar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D * c
+    let T = proof_result.Abar.mul(proof_result.r2Hat)
       .add(proof_result.Bbar.mul(proof_result.r3Hat));
     for (let k = 0; k < U; k++) {
-      C = C.add(generators.H[j[k] - 1].mul(proof_result.mHat[k]));
+      T = T.add(generators.H[j[k] - 1].mul(proof_result.mHat[k]));
     }
-    C = C.add(D.mul(proof_result.c));
+    T = T.add(D.mul(proof_result.c));
 
     const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based
-    const cv = this.calculate_challenge(proof_result.Abar, proof_result.Bbar, C, iZeroBased, disclosed_messages, domain, ph);
+    const cv = this.calculate_challenge(proof_result.Abar, proof_result.Bbar, T, iZeroBased, disclosed_messages, domain, ph);
     utils.log("cv", cv);
 
     if (!proof_result.c.equals(cv)) {
