@@ -6,11 +6,6 @@ This project aims to keep up to date with the [latest specification](https://ide
 
 Given the rapid evolution of the BBS scheme, there might be inconsistencies between the specification and the code; please open issues or file PRs if you find any!
 
-## Known issues
-
-This library is a work in progress. Here are some known issues:
-* Only the BLS12-381-SHA-256 ciphersuite is currently available
-
 ## Setup
 
 Make sure [node.js](https://nodejs.org/) and [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) are installed on your system; the latest Long-Term Support (LTS) version is recommended for both.
