@@ -38,7 +38,7 @@ export class BBS {
   }
 
   //
-  // 3.3 Key Generation Operations
+  // 3.4 Key Generation Operations
   //
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-secret-key
@@ -62,7 +62,8 @@ export class BBS {
   }
 
   //
-  // 3.4 Core Operations
+  // 3.6. Core Operations (the functions implement both the BBS interface
+  //      and the core operations)
   //
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-signature-generation-sign
@@ -308,7 +309,7 @@ export class BBS {
   }
 
   //
-  // 4.7 Serialization
+  // 4.2.4 Serialization
   //
 
   private serializeInputToBytes(data: SerializeInput): Uint8Array {
