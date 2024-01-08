@@ -195,14 +195,6 @@ export class BBS {
       mHat[k] = messages[j[k] - 1].mul(c).add(mTilda[k]); // m^_j = m~_j + m_j * c (mod r)
     }
 
-    // const r4 = r1.neg().inv(); // r4 = -r1^-1 (mod r)
-    // const r2Hat = signature_result.e.mul(r4).mul(c).add(r2); // r2^ = r2 + e * r4 * c (mod r)
-    // const r3Hat = r4.mul(c).add(r3); // r3^ = r3 + r4 * c (mod r)
-    // const mHat: FrScalar[] = [];
-    // for (let k = 0; k < U; k++) {
-    //   mHat[k] = messages[j[k] - 1].mul(c).add(mTilda[k]); // m^_j = m~_j + m_j * c (mod r)
-    // }
-
     const proof = { Abar: Abar, Bbar: Bbar, D: D, eHat: eHat, r1Hat: r1Hat, r3Hat: r3Hat, mHat: mHat, c: c }
     return this.proof_to_octets(proof);
   }
@@ -247,22 +239,6 @@ export class BBS {
       T2 = T2.add(generators.H[j[k] - 1].mul(proof.mHat[k]));
     }
 
-    /*
-    // D = P1 + Q_1 * domain + H_i1 * m_i1 + ... + H_iR * m_iR
-    let D = this.cs.P1;
-    D = D.add(generators.Q1.mul(domain));
-    for (let k = 0; k < R; k++) {
-      D = D.add(generators.H[i[k] - 1].mul(disclosed_messages[k]));
-    }
-
-    // T = Abar * r2^ + Bbar * r3^ + H_j1 * m^_j1 + ... + H_jU * m^_jU + D * c
-    let T = proof.Abar.mul(proof.r2Hat)
-      .add(proof.Bbar.mul(proof.r3Hat));
-    for (let k = 0; k < U; k++) {
-      T = T.add(generators.H[j[k] - 1].mul(proof.mHat[k]));
-    }
-    T = T.add(D.mul(proof.c));
-    */
     const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based
     const cv = this.calculate_challenge(proof.Abar, proof.Bbar, proof.D, T1, T2, iZeroBased, disclosed_messages, domain, ph);
     utils.log("cv", cv);
