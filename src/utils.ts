@@ -38,9 +38,9 @@ export function bytesToHex(bytes: Uint8Array): string {
 }
 
 export function filterDisclosedMessages(msg: FrScalar[], disclosed_indexes: number[]): FrScalar[] {
-  return msg.filter((v, i, a) => { return disclosed_indexes.includes(i + 1) });
+  return msg.filter((v, i, a) => { return disclosed_indexes.includes(i) });
 }
 
 export function log(...s: any): void {
-  // console.log(...s);  // uncomment to print out debug statements
+//  console.log(...s);  // uncomment to print out debug statements
 }

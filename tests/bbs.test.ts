@@ -31,7 +31,7 @@ ciphersuites.forEach(cs => {
         bbs.Verify(PK, signature, header, msg, generators);
 
         // randomly disclose each message
-        const disclosed_indexes = Array(length).fill(0).map((v, i, a) => i + 1).filter(v => { return Math.random() > 0.5; }); // random coin flip for each message
+        const disclosed_indexes = Array(length).fill(0).map((v, i, a) => i ).filter(v => { return Math.random() > 0.5; }); // random coin flip for each message
         const ph = Buffer.from("PRESENTATION HEADER", "utf-8");
 
         const proof = bbs.ProofGen(PK, signature, header, ph, msg, generators, disclosed_indexes);

@@ -11,7 +11,7 @@ import { FrScalar, G1Point } from '../src/math';
 import { BLS12_381_SHA256_Ciphersuite, BLS12_381_SHAKE_256_Ciphersuite } from '../src/ciphersuite';
 
 interface Generators {
-    BP: string;
+    P1: string;
     Q1: string;
     MsgGenerators: string[];
 }
@@ -42,7 +42,8 @@ interface Proof {
     signerPublicKey: string;
     header: string;
     presentationHeader: string;
-    revealedMessages: Record<string, string>;
+    messages: string[];
+    disclosedIndexes: number[];
     proof: string;
     result: {
         valid: boolean;
@@ -124,8 +125,8 @@ ciphersuites.forEach(cs => {
             if (!H.equals(actualGenerators.H[idx])) { throw `invalid H${idx} generator; expected: ${H}, actual: ${actualGenerators.H[idx]}`; }
         })
         // check base point
-        const BP = G1Point.fromOctets(hexToBytes(generatorFixture.BP));
-        if (!BP.equals(bbs.cs.P1)) { throw `invalid base point; expected: ${BP}, actual: ${bbs.cs.P1}`; }
+        const P1 = G1Point.fromOctets(hexToBytes(generatorFixture.P1));
+        if (!P1.equals(bbs.cs.P1)) { throw `invalid base point; expected: ${P1}, actual: ${bbs.cs.P1}`; }
     });
 
     test(`keypair (${cs})`, async () => {
@@ -173,8 +174,8 @@ ciphersuites.forEach(cs => {
 
     for (let i = 0; i < proofsFixture.length; i++) {
         test(`proof${String(i + 1).padStart(3, '0')}: ${proofsFixture[i].caseName} (${cs})`, async () => {
-            const disclosed_indexes = Object.keys(proofsFixture[i].revealedMessages).map(v => parseInt(v) + 1);
-            const disclosed_messages = Object.values(proofsFixture[i].revealedMessages).map(v => bbs.MapMessageToScalarAsHash(hexToBytes(v)));
+            const disclosed_indexes = proofsFixture[i].disclosedIndexes;
+            const disclosed_messages = proofsFixture[i].messages.filter((v,i,a) => disclosed_indexes.includes(i)).map(v => bbs.MapMessageToScalarAsHash(hexToBytes(v)));
 
             let failed = false;
             try {
