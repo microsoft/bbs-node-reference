@@ -175,7 +175,7 @@ ciphersuites.forEach(cs => {
     for (let i = 0; i < proofsFixture.length; i++) {
         test(`proof${String(i + 1).padStart(3, '0')}: ${proofsFixture[i].caseName} (${cs})`, async () => {
             const disclosed_indexes = proofsFixture[i].disclosedIndexes;
-            const disclosed_messages = proofsFixture[i].messages.filter((v,i,a) => disclosed_indexes.includes(i+1)).map(v => bbs.MapMessageToScalarAsHash(hexToBytes(v)));
+            const disclosed_messages = proofsFixture[i].messages.filter((v,i,a) => disclosed_indexes.includes(i)).map(v => bbs.MapMessageToScalarAsHash(hexToBytes(v)));
 
             let failed = false;
             try {

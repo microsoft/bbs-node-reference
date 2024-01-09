@@ -133,7 +133,7 @@ export class BBS {
     const iSet = new Set<number>(disclosed_indexes);
     const i = Array.from(iSet).sort((a, b) => a - b);
     utils.log("i", i);
-    const jSet = new Set<number>(Array.from({ length: L }, (e, i) => i + 1));
+    const jSet = new Set<number>(Array.from({ length: L }, (e, i) => i));
     iSet.forEach(v => jSet.delete(v));
     const j = Array.from(jSet).sort((a, b) => a - b);
     utils.log("j", j);
@@ -173,14 +173,12 @@ export class BBS {
     // T2 = D * r3~ + H_j1 * m~_j1 + ... + H_jU * m~_jU
     let T2 = D.mul(r3Tilda);
     for (let k = 0; k < U; k++) {
-      T2 = T2.add(generators.H[j[k] - 1].mul(mTilda[k]));
+      T2 = T2.add(generators.H[j[k]].mul(mTilda[k]));
     }
 
     // c = calculate_challenge(Abar, Bbar, D, T1, T2, (i1, ..., iR), (m_i1, ..., m_iR), domain, ph)    
     const disclosedMsg = utils.filterDisclosedMessages(messages, disclosed_indexes);
-    const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based;
-    const c = this.calculate_challenge(Abar, Bbar, D, T1, T2, iZeroBased, disclosedMsg, domain, ph);
-
+    const c = this.calculate_challenge(Abar, Bbar, D, T1, T2, i, disclosedMsg, domain, ph);
 
     // r3 = r2^-1 (mod r)
     const r3 = r2.inv();
@@ -192,7 +190,7 @@ export class BBS {
     const r3Hat = r3Tilda.add(r3.mul(c).neg());
     const mHat: FrScalar[] = [];
     for (let k = 0; k < U; k++) {
-      mHat[k] = messages[j[k] - 1].mul(c).add(mTilda[k]); // m^_j = m~_j + m_j * c (mod r)
+      mHat[k] = messages[j[k]].mul(c).add(mTilda[k]); // m^_j = m~_j + m_j * c (mod r)
     }
 
     const proof = { Abar: Abar, Bbar: Bbar, D: D, eHat: eHat, r1Hat: r1Hat, r3Hat: r3Hat, mHat: mHat, c: c }
@@ -211,7 +209,7 @@ export class BBS {
     const iSet = new Set<number>(RevealedIndexes);
     const i = Array.from(iSet).sort((a, b) => a - b);
     utils.log("i", i);
-    const jSet = new Set<number>(Array.from({ length: L }, (e, i) => i + 1));
+    const jSet = new Set<number>(Array.from({ length: L }, (e, i) => i));
     iSet.forEach(v => jSet.delete(v));
     const j = Array.from(jSet).sort((a, b) => a - b);
     utils.log("j", j);
@@ -231,16 +229,16 @@ export class BBS {
     let Bv = this.cs.P1;
     Bv = Bv.add(generators.Q1.mul(domain));
     for (let k = 0; k < R; k++) {
-      Bv = Bv.add(generators.H[i[k] - 1].mul(disclosed_messages[k]));
+      Bv = Bv.add(generators.H[i[k]].mul(disclosed_messages[k]));
     }
     // T2 = Bv * c + D * r3^ + H_j1 * m^_j1 + ... +  H_jU * m^_jU
     let T2 = Bv.mul(proof.c).add(proof.D.mul(proof.r3Hat));
     for (let k = 0; k < U; k++) {
-      T2 = T2.add(generators.H[j[k] - 1].mul(proof.mHat[k]));
+      T2 = T2.add(generators.H[j[k]].mul(proof.mHat[k]));
     }
 
-    const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based
-    const cv = this.calculate_challenge(proof.Abar, proof.Bbar, proof.D, T1, T2, iZeroBased, disclosed_messages, domain, ph);
+//    const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based
+    const cv = this.calculate_challenge(proof.Abar, proof.Bbar, proof.D, T1, T2, i, disclosed_messages, domain, ph);
     utils.log("cv", cv);
 
     if (!proof.c.equals(cv)) {
