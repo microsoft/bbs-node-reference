@@ -78,7 +78,7 @@ export class BBS {
     const L = messages.length;
     const domain = this.calculate_domain(PK, generators, header);
     utils.log("domain", domain);
-    const e = this.hash_to_scalar(this.serialize([SK, domain, ...messages]));
+    const e = this.hash_to_scalar(this.serialize([SK, ...messages, domain]));
     utils.log("e", e);
 
     // B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
@@ -313,9 +313,17 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-challenge-calculation
   calculate_challenge(Abar: G1Point, Bbar: G1Point, D: G1Point, T1: G1Point, T2: G1Point, i_array: number[], msg_array: FrScalar[], domain: FrScalar, ph: Uint8Array): FrScalar {
+    if (i_array.length !== msg_array.length) {
+      throw "i_array and msg_array should have the same length";
+    }
     const challenge = this.hash_to_scalar(
       utils.concat(
-        this.serialize([Abar, Bbar, D, T1, T2, i_array.length, ...i_array, ...msg_array, domain]),
+        this.serialize([
+          // R
+          i_array.length, 
+          // i_1, msg_1, i_2, msg_2, ...
+          ...i_array.flatMap((val, idx) => [val, msg_array[idx]]), 
+          Abar, Bbar, D, T1, T2, domain]),
         utils.i2osp(ph.length, 8),
         ph));
     return challenge;
@@ -380,7 +388,7 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-octets-to-proof
   octets_to_proof(proof_octets: Uint8Array): BBSProof {
-    const proof_len_floor = 3 * this.cs.octet_point_length + 4 * this.cs.octet_scalar_length;
+    const proof_len_floor = 2 * this.cs.octet_point_length + 4 * this.cs.octet_scalar_length;
     if (proof_octets.length < proof_len_floor) {
       throw "invalid proof (length)";
     }
