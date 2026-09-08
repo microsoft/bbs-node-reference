@@ -142,7 +142,7 @@ export class FrScalar {
         if (canonical && (scalar <= 0n || scalar >= FrScalar.blsFr.ORDER)) {
             throw new Error("scalar is not in the range [1, r-1]");
         }
-        return new FrScalar(FrScalar.blsFr.create(scalar));
+        return new FrScalar(scalar);
     }
 
 }
