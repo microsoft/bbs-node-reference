@@ -388,18 +388,23 @@ export class BBS {
 
   // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-octets-to-proof
   octets_to_proof(proof_octets: Uint8Array): BBSProof {
-    const proof_len_floor = 2 * this.cs.octet_point_length + 4 * this.cs.octet_scalar_length;
-    if (proof_octets.length < proof_len_floor) {
+    const proof_len_floor = 3 * this.cs.octet_point_length + 4 * this.cs.octet_scalar_length;
+    if (proof_octets.length < proof_len_floor ||
+      (proof_octets.length - proof_len_floor) % this.cs.octet_scalar_length !== 0) {
       throw "invalid proof (length)";
     }
 
     let index = 0;
-    const Abar = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
-    index += this.cs.octet_point_length;
-    const Bbar = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
-    index += this.cs.octet_point_length;
-    const D = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
-    index += this.cs.octet_point_length;
+    const points: G1Point[] = [];
+    for (let k = 0; k < 3; k++) {
+      const point = G1Point.fromOctets(proof_octets.slice(index, index + this.cs.octet_point_length));
+      if (point.equals(G1Point.Identity)) {
+        throw "invalid proof (identity point)";
+      }
+      points.push(point);
+      index += this.cs.octet_point_length;
+    }
+    const [Abar, Bbar, D] = points;
 
     const eHat = utils.os2ip(proof_octets.slice(index, index + this.cs.octet_scalar_length), true);
     index += this.cs.octet_scalar_length;
