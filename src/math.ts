@@ -14,6 +14,28 @@ type Fp2 = { c0: bigint; c1: bigint };
 type Fp6 = { c0: Fp2; c1: Fp2; c2: Fp2 };
 type Fp12 = { c0: Fp6; c1: Fp6 };
 
+// Validates the C_bit/I_bit/S_bit metadata byte of a serialized point, per
+// https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-point-de-serialization
+// The bls library doesn't check the C_bit of E1 points, nor that an encoding
+// flagged with I_bit is the all-zeros string; without these checks, clearing
+// the C_bit of a signature or proof yields a second, distinct, valid encoding.
+function checkPointOctets(bytes: Uint8Array, expected_length: number): void {
+    if (bytes.length !== expected_length) {
+        throw new Error("invalid point length");
+    }
+    const m_byte = bytes[0] & 0xe0;
+    if (m_byte === 0x20 || m_byte === 0x60 || m_byte === 0xe0) {
+        throw new Error("invalid point encoding flag");
+    }
+    if ((m_byte & 0x80) === 0) {
+        throw new Error("invalid point encoding: only compressed points are supported");
+    }
+    if ((m_byte & 0x40) !== 0 && bytes.some((b, i) => b !== (i === 0 ? 0xc0 : 0))) {
+        // I_bit is set, so the encoding must be the identity point
+        throw new Error("invalid identity point encoding");
+    }
+}
+
 // abstract point class
 export class Point<T, U extends Point<T, U>> {
     point: ProjPointType<T>;
@@ -44,6 +66,7 @@ export class G1Point extends Point<Fp, G1Point> {
     }
     static Identity = new G1Point(bls.G1.ProjectivePoint.ZERO);
     static fromOctets(bytes: Uint8Array): G1Point {
+        checkPointOctets(bytes, 48);
         return new G1Point(bls.G1.ProjectivePoint.fromHex(bytes)); // fromHex takes bytes...
     }
     static async hashToCurve(msg: Uint8Array, dst: string): Promise<G1Point> {
@@ -69,6 +92,7 @@ export class G2Point extends Point<Fp2, G2Point> {
     static fromOctets(bytes: Uint8Array, subgroupCheck = false): G2Point {
         // note: we ignore the subgroupCheck parameter, because the bls library fromHex function
         // always checks the subgroup membership
+        checkPointOctets(bytes, 96);
         return new G2Point(bls.G2.ProjectivePoint.fromHex(bytes)); // fromHex takes bytes...
     }
 }
@@ -110,9 +134,15 @@ export class FrScalar {
     equals(s: FrScalar): boolean {
         return this.scalar === s.scalar;
     }
-    static create(scalar: bigint, nonZero: boolean = false) {
-        if (nonZero && scalar === 0n) throw new Error("scalar is 0");
-        return new FrScalar(FrScalar.blsFr.create(scalar));
+    // when canonical is set, the value MUST already be a scalar in the range [1, r-1];
+    // deserialization operations require this (e.g., octets_to_signature step 11), since
+    // silently reducing mod r would make s and s + r two valid encodings of the same value.
+    // Otherwise the value is reduced mod r (used when deriving scalars from uniform bytes).
+    static create(scalar: bigint, canonical: boolean = false) {
+        if (canonical && (scalar <= 0n || scalar >= FrScalar.blsFr.ORDER)) {
+            throw new Error("scalar is not in the range [1, r-1]");
+        }
+        return new FrScalar(scalar);
     }
 
 }

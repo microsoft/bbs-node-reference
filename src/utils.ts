@@ -8,8 +8,9 @@ import {sha256} from '@noble/hashes/sha256';
 import {shake256} from '@noble/hashes/sha3';
 
 // Octet Stream to Integer
-export function os2ip(bytes: Uint8Array, nonZero: boolean = false): FrScalar {
-  return FrScalar.create(utils.bytesToNumberBE(bytes), nonZero);
+// see FrScalar.create for the meaning of canonical
+export function os2ip(bytes: Uint8Array, canonical: boolean = false): FrScalar {
+  return FrScalar.create(utils.bytesToNumberBE(bytes), canonical);
 }
 
 // Integer to Octet Stream
