@@ -75,18 +75,15 @@ export class BBS {
     if (messages.length !== generators.H.length) {
       throw "msg and H should have the same length";
     }
-    const L = messages.length;
     const domain = this.calculate_domain(PK, generators, header);
     utils.log("domain", domain);
     const e = this.hash_to_scalar(this.serialize([SK, ...messages, domain]));
     utils.log("e", e);
 
-    // B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-    let B = this.cs.P1;
-    B = B.add(generators.Q1.mul(domain));
-    for (let i = 0; i < L; i++) {
-      B = B.add(generators.H[i].mul(messages[i]));
-    }
+    // B = multi_exponentiation_g1((P1, ...generators), (1, domain, ...messages))
+    const B = this.multi_exponentiation_g1(
+      [this.cs.P1, generators.Q1, ...generators.H],
+      [FrScalar.create(1n), domain, ...messages]);
     utils.log("B", B);
 
     // A = B * (1 / (SK + e))
@@ -103,16 +100,13 @@ export class BBS {
     utils.log("Verify");
 
     const sig = this.octets_to_signature(signature);
-    const L = messages.length;
     const domain = this.calculate_domain(PK, generators, header);
     utils.log("domain", domain);
 
-    // B = P1 + Q1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-    let B = this.cs.P1;
-    B = B.add(generators.Q1.mul(domain));
-    for (let i = 0; i < L; i++) {
-      B = B.add(generators.H[i].mul(messages[i]));
-    }
+    // B = multi_exponentiation_g1((P1, ...generators), (1, domain, ...messages))
+    const B = this.multi_exponentiation_g1(
+      [this.cs.P1, generators.Q1, ...generators.H],
+      [FrScalar.create(1n), domain, ...messages]);
     utils.log("B", B);
 
     // check that e(A, W + P2 * e) * e(B, -P2) == Identity_GT
@@ -129,6 +123,8 @@ export class BBS {
     const R = disclosed_indexes.length;
     const U = L - R;
     const signature_result = this.octets_to_signature(signature);
+    // ProofInit deserialization, steps 4 and 6 (R > L is implied by the ascending order check)
+    this.check_disclosed_indexes(disclosed_indexes, L);
 
     const iSet = new Set<number>(disclosed_indexes);
     const i = Array.from(iSet).sort((a, b) => a - b);
@@ -156,25 +152,23 @@ export class BBS {
     const mTilda = new Array(U).fill(0n).map((v, i, a) => scalars[index + i]);
     utils.log("mTilda", mTilda);
 
-    // B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-    let B = this.cs.P1;
-    B = B.add(generators.Q1.mul(domain));
-    for (let k = 0; k < L; k++) {
-      B = B.add(generators.H[k].mul(messages[k]));
-    }
+    // B = multi_exponentiation_g1((P1, ...generators), (1, domain, ...messages))
+    const B = this.multi_exponentiation_g1(
+      [this.cs.P1, generators.Q1, ...generators.H],
+      [FrScalar.create(1n), domain, ...messages]);
     utils.log("B", B);
 
     const D = B.mul(r2); // D = B * r2
     const Abar = signature_result.A.mul(r1.mul(r2)); // Abar = A * (r1 * r2)
-    const Bbar = D.mul(r1).add(Abar.mul(signature_result.e).neg()); // Bbar = D * r1 - Abar * e
+    // Bbar = multi_exponentiation_g1((D, Abar), (r1, -e))
+    const Bbar = this.multi_exponentiation_g1([D, Abar], [r1, signature_result.e.neg()]);
 
-    // T1 = Abar * e~ + D * r1~
-    let T1 = Abar.mul(eTilda).add(D.mul(r1Tilda));
-    // T2 = D * r3~ + H_j1 * m~_j1 + ... + H_jU * m~_jU
-    let T2 = D.mul(r3Tilda);
-    for (let k = 0; k < U; k++) {
-      T2 = T2.add(generators.H[j[k]].mul(mTilda[k]));
-    }
+    // T1 = multi_exponentiation_g1((Abar, D), (e~, r1~))
+    const T1 = this.multi_exponentiation_g1([Abar, D], [eTilda, r1Tilda]);
+    // T2 = multi_exponentiation_g1((D, ...undisclosed_generators), (r3~, m~_j1, ..., m~_jU))
+    const T2 = this.multi_exponentiation_g1(
+      [D, ...j.map(k => generators.H[k])],
+      [r3Tilda, ...mTilda]);
 
     // c = calculate_challenge(Abar, Bbar, D, T1, T2, (i1, ..., iR), (m_i1, ..., m_iR), domain, ph)    
     const disclosedMsg = utils.filterDisclosedMessages(messages, disclosed_indexes);
@@ -205,6 +199,11 @@ export class BBS {
     const R = RevealedIndexes.length;
     const U = proof.mHat.length;
     const L = R + U;
+    // ProofVerifyInit deserialization, step 6
+    this.check_disclosed_indexes(RevealedIndexes, L);
+    if (disclosed_messages.length !== R) {
+      throw "disclosed_messages and disclosed_indexes should have the same length";
+    }
 
     const iSet = new Set<number>(RevealedIndexes);
     const i = Array.from(iSet).sort((a, b) => a - b);
@@ -214,7 +213,9 @@ export class BBS {
     const j = Array.from(jSet).sort((a, b) => a - b);
     utils.log("j", j);
 
-    // copy and trim generators
+    // copy and trim generators. NOTE: ProofVerifyInit (step 8) requires exactly L + 1 generators;
+    // we accept more and trim them so callers can reuse a larger set. This doesn't change the
+    // result, since the domain is calculated over the trimmed generators.
     if (extGenerators.H.length < L) throw new Error("Not enough generators provided");
     const generators: Generators = {
       H: extGenerators.H.slice(0, L),
@@ -223,19 +224,16 @@ export class BBS {
     const domain = this.calculate_domain(PK, generators, header);
     utils.log("domain", domain);
 
-    // T1 = Bbar * c + Abar * e^ + D * r1^
-    let T1 = proof.Bbar.mul(proof.c).add(proof.Abar.mul(proof.eHat)).add(proof.D.mul(proof.r1Hat));
-    // Bv = P1 + Q_1 * domain + H_i1 * msg_i1 + ... + H_iR * msg_iR
-    let Bv = this.cs.P1;
-    Bv = Bv.add(generators.Q1.mul(domain));
-    for (let k = 0; k < R; k++) {
-      Bv = Bv.add(generators.H[i[k]].mul(disclosed_messages[k]));
-    }
-    // T2 = Bv * c + D * r3^ + H_j1 * m^_j1 + ... +  H_jU * m^_jU
-    let T2 = Bv.mul(proof.c).add(proof.D.mul(proof.r3Hat));
-    for (let k = 0; k < U; k++) {
-      T2 = T2.add(generators.H[j[k]].mul(proof.mHat[k]));
-    }
+    // T1 = multi_exponentiation_g1((Bbar, Abar, D), (c, e^, r1^))
+    const T1 = this.multi_exponentiation_g1([proof.Bbar, proof.Abar, proof.D], [proof.c, proof.eHat, proof.r1Hat]);
+    // Bv = multi_exponentiation_g1((P1, Q_1, H_i1, ..., H_iR), (1, domain, ...disclosed_messages))
+    const Bv = this.multi_exponentiation_g1(
+      [this.cs.P1, generators.Q1, ...i.map(k => generators.H[k])],
+      [FrScalar.create(1n), domain, ...disclosed_messages]);
+    // T2 = multi_exponentiation_g1((Bv, D, H_j1, ..., H_jU), (c, r3^, ...commitments))
+    const T2 = this.multi_exponentiation_g1(
+      [Bv, proof.D, ...j.map(k => generators.H[k])],
+      [proof.c, proof.r3Hat, ...proof.mHat]);
 
 //    const iZeroBased = i.map(v => v - 1); // spec's fixtures assume these are 0-based
     const cv = this.calculate_challenge(proof.Abar, proof.Bbar, proof.D, T1, T2, i, disclosed_messages, domain, ph);
@@ -251,6 +249,19 @@ export class BBS {
       proof.Bbar, G2Point.Base.neg())) {
       throw "Invalid proof (pairing)"
     }
+  }
+
+  // checks that the disclosed indexes are integers in [0, L - 1], in strictly ascending order
+  // (which also rules out duplicates and more indexes than messages)
+  private check_disclosed_indexes(disclosed_indexes: number[], L: number): void {
+    disclosed_indexes.forEach((i, k) => {
+      if (!Number.isInteger(i) || i < 0 || i > L - 1) {
+        throw "disclosed index out of range: " + i;
+      }
+      if (k > 0 && i <= disclosed_indexes[k - 1]) {
+        throw "disclosed indexes must be in ascending order, without duplicates";
+      }
+    });
   }
 
   //
@@ -329,8 +340,20 @@ export class BBS {
     return challenge;
   }
 
+  // https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html#name-multi-exponentiation
+  multi_exponentiation_g1(points: G1Point[], scalars: FrScalar[]): G1Point {
+    if (points.length === 0 || points.length !== scalars.length) {
+      throw "points and scalars should be non-empty and have the same length";
+    }
+    let P = G1Point.Identity;
+    for (let i = 0; i < scalars.length; i++) {
+      P = P.add(points[i].mul(scalars[i]));
+    }
+    return P;
+  }
+
   //
-  // 4.2.4 Serialization
+  // 4.2.5 Serialization
   //
 
   private serializeInputToBytes(data: SerializeInput): Uint8Array {
